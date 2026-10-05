@@ -245,3 +245,35 @@ test('/taskline demo writes three jobs that show up', async ($, on) => {
   expect(t).toContain('Index')
   expect(t).toContain('Tiles')
 })
+
+test('a file caught mid-write keeps its last good state', async ($, on) => {
+  const w = world(on)
+  w.task('dl', { label: 'DL', done: 40, total: 100 })
+  await start($)
+  await tick(w.clock)
+  w.write(`${DIR}/dl.json`, '{"v":1,"done":4') // a non-atomic writer, caught halfway
+  await tick(w.clock)
+  expect(await shown(await mount($))).toContain('40/100')
+})
+
+test('a survey owns the band: taskline steps aside', async ($, on) => {
+  const w = world(on)
+  w.task('x', { label: 'X', done: 1, total: 4 })
+  await start($)
+  await tick(w.clock)
+  const ui = await $.ui.mount({ ...BAND, props: { ...BAND.props, hasSurvey: true }, surface: 'terminal', viewport: { columns: 145, rows: 40 } } as never)
+  expect(await shown(ui)).toBe('engine-band')
+})
+
+test('with cleanup off, a finished task still hides after doneVisible and its file stays', { options: { cleanup: false, doneVisible: 5 } }, async ($, on) => {
+  const w = world(on)
+  w.task('dl', { label: 'DL', done: 5, total: 5, status: 'done' })
+  await start($)
+  await tick(w.clock)
+  const ui = await mount($)
+  expect(await shown(ui)).toContain('DL')
+  await w.clock.advance(6000)
+  expect(await shown(ui)).toBe('engine-band')
+  expect(w.removed).toEqual([])
+  expect(w.files.has(`${DIR}/dl.json`)).toBe(true)
+})

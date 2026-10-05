@@ -423,6 +423,8 @@ def _fmt_line(data: Dict[str, Any], now: float) -> str:
     status = data.get("status", "running")
     if status == "running" and _alive(data.get("pid")) is False:
         status = "aborted"
+    elif status == "running" and age > 60:
+        status = "stalled"
     of = f"/{total:g}" if isinstance(total, (int, float)) else ""
     msg = f"  {data['message']}" if data.get("message") else ""
     return f"{data['id']:<20} {status:<8} {pct}  {done:g}{of} {data.get('unit', 'items')}  ({age:.0f}s ago){msg}"

@@ -216,3 +216,11 @@ def test_cli_errors_are_exit_2_with_a_message(progress_dir):
 def test_cli_help_and_version():
     assert "usage: taskline" in cli("--help").stdout
     assert "protocol v1" in cli("--version").stdout
+
+
+def test_cli_ls_marks_stalled_tasks(progress_dir):
+    taskline.report("old", 1, 4)
+    data = load(progress_dir, "old")
+    data["updated_at"] -= 120
+    (progress_dir / "old.json").write_text(json.dumps(data))
+    assert "stalled" in cli("ls").stdout
