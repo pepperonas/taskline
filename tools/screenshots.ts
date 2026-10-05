@@ -2,7 +2,7 @@
  * Renders the README images from the mod's own layout code (hooks/layout.ts),
  * so every picture shows exactly what the band draws — no mock-ups.
  *
- *   npm run screenshots        # docs/hero.png, docs/states.png, docs/widths.png
+ *   npm run screenshots        # docs/hero.png, docs/states.png, docs/widths.png, docs/social.png
  *
  * Uses Playwright with the installed Google Chrome (or Playwright's Chromium).
  */
@@ -88,6 +88,27 @@ ${rows([TILES, BRIDGE, INDEX], 132)}
   ),
 }
 
+/** The 1280×640 card for GitHub's social preview and the top of the README. */
+const SOCIAL = `<!doctype html><meta charset="utf-8"><style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{width:1280px;height:640px;overflow:hidden;font-family:-apple-system,"SF Pro Display","Segoe UI",sans-serif;color:#e6edf3;
+background:radial-gradient(1200px 600px at 85% -10%,#12304d 0%,transparent 60%),radial-gradient(900px 500px at -10% 110%,#0f3326 0%,transparent 55%),#0b0e14}
+.wrap{position:absolute;inset:0;padding:64px 72px;display:flex;flex-direction:column}
+.kicker{font-size:22px;letter-spacing:.18em;text-transform:uppercase;color:#8b949e;font-weight:600}
+h1{font-size:92px;line-height:1;margin:14px 0 10px;font-weight:800;letter-spacing:-.02em}
+h1 span{background:linear-gradient(90deg,#79c0ff,#3fb950 55%,#d29922);-webkit-background-clip:text;background-clip:text;color:transparent}
+p{font-size:30px;color:#c9d1d9;max-width:1000px;line-height:1.3}
+.term{margin-top:auto;background:#0d1117ee;border:1px solid #30363d;border-radius:14px;padding:20px 26px;font-family:"SF Mono",Menlo,monospace;font-size:21px;line-height:1.7;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+.row{white-space:pre;height:1.7em}
+.foot{position:absolute;right:72px;top:70px;font-size:20px;color:#8b949e;text-align:right;line-height:1.5}
+.foot b{color:#e6edf3}
+</style><body><div class="wrap">
+<div class="kicker">Claude Code mod</div>
+<h1>task<span>line</span></h1>
+<p>Every long-running job, live above the prompt — bar, speed, ETA, and a loud warning when one stalls or dies.</p>
+<div class="term">${rows([TILES, BRIDGE, INDEX], 90, 'stacked')}</div>
+</div><div class="foot"><b>github.com/pepperonas/taskline</b><br>MIT · celox.io</div></body>`
+
 async function main() {
   rmSync(TMP, { recursive: true, force: true })
   mkdirSync(TMP, { recursive: true })
@@ -100,6 +121,12 @@ async function main() {
     await page.locator('body').screenshot({ path: join(DOCS, `${name}.png`), omitBackground: true })
     console.log(`docs/${name}.png`)
   }
+  const card = await browser.newPage({ viewport: { width: 1280, height: 640 }, deviceScaleFactor: 1 })
+  const file = join(TMP, 'social.html')
+  writeFileSync(file, SOCIAL)
+  await card.goto(`file://${file}`)
+  await card.screenshot({ path: join(DOCS, 'social.png') })
+  console.log('docs/social.png')
   await browser.close()
   rmSync(TMP, { recursive: true, force: true })
 }

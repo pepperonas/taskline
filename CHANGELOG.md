@@ -9,6 +9,7 @@ All notable changes to this project are documented here. The format follows
 ### Added
 
 - `stalled_after` per task (protocol, watchers, Python `Progress`, CLI `--stalled-after`): jobs that report once per batch no longer read as stalled between batches.
+- Social card (`docs/social.png`, 1280×640) at the top of the README, rendered by `npm run screenshots`.
 - `docs/INTEGRATIONS.md` with two worked examples (Bridge fetch in Python, gta2d map fetch in Node) as patches, and a logtail watcher for the Bridge log.
 
 ## [0.1.0] - 2026-10-06

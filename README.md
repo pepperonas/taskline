@@ -1,6 +1,6 @@
 <div align="center">
 
-<a href="https://github.com/pepperonas/taskline"><img src="docs/hero.png" alt="taskline — live progress of long-running jobs above the Claude Code prompt" width="100%"></a>
+<a href="https://github.com/pepperonas/taskline"><img src="docs/social.png" alt="taskline — live progress of long-running jobs above the Claude Code prompt" width="100%"></a>
 
 # ⏳ taskline
 
@@ -44,6 +44,10 @@
 
 ## 📸 Screenshots
 
+**In a session** — a stalled job, a download with files and bytes, and an open-ended index, right above the prompt:
+
+<img src="docs/hero.png" alt="taskline above the Claude Code prompt: a stalled job, a running download, an index with unknown total" width="100%">
+
 **Every state** — a running job with files *and* bytes, a byte-sized download, an unknown amount of work, a stall, a crashed writer, an error, and a finished job (green for ten seconds, then gone):
 
 <img src="docs/states.png" alt="taskline states: running, byte unit, unknown total, stalled, aborted, error, done" width="100%">
@@ -52,7 +56,7 @@
 
 <img src="docs/widths.png" alt="the same three jobs at four terminal widths" width="100%">
 
-Both images are rendered by [`tools/screenshots.ts`](tools/screenshots.ts) from the mod's own layout code, not drawn by hand.
+All images, the social card included, are rendered by [`tools/screenshots.ts`](tools/screenshots.ts) from the mod's own layout code, not drawn by hand.
 
 ## ✨ Features
 
@@ -286,7 +290,7 @@ npm test                 # node suite (CI)
 claude plugin test .     # engine suite
 python3 -m pytest tests  # python suite (CI)
 claude plugin validate . # what the module hooks and calls
-npm run screenshots      # re-render docs/*.png (uses your Chrome)
+npm run screenshots      # re-render docs/*.png and the social card (uses your Chrome)
 ```
 
 ## ❓ FAQ
