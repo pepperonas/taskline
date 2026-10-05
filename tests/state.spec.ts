@@ -83,3 +83,8 @@ test('isAnimated only while something runs or stalls', () => {
   assert.equal(isAnimated(buildViews(snap([task()]), NOW, DEFAULT_TIMING)), true)
   assert.equal(isAnimated(buildViews(snap([task({ status: 'done' })]), NOW, DEFAULT_TIMING)), false)
 })
+
+test("a task's own stalled_after beats the setting, both ways", () => {
+  assert.equal(phaseOf(task({ updatedAt: NOW - 120_000, stalledAfter: 600 }), NOW, DEFAULT_TIMING, undefined), 'running')
+  assert.equal(phaseOf(task({ updatedAt: NOW - 20_000, stalledAfter: 10 }), NOW, DEFAULT_TIMING, undefined), 'stalled')
+})

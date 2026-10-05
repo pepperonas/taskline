@@ -23,7 +23,7 @@ export function phaseOf(task: Task, now: number, timing: Timing, alive: boolean 
   if (task.status === 'done') return 'done'
   if (task.status === 'error') return 'error'
   if (task.pid !== undefined && alive === false) return 'aborted'
-  if (now - task.updatedAt > timing.stalledAfter * 1000) return 'stalled'
+  if (now - task.updatedAt > (task.stalledAfter ?? timing.stalledAfter) * 1000) return 'stalled'
   return 'running'
 }
 

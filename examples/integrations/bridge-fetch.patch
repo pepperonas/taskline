@@ -1,0 +1,38 @@
+--- a/fetch.py
++++ b/fetch.py
+@@ -4,6 +4,11 @@
+ md5s already handled. Stops before the downloads would pass CAP bytes."""
+ import json, os, shutil, struct, subprocess, sys, time
+ 
++try:  # live progress above the Claude Code prompt (taskline); optional
++    from taskline import Progress
++except ImportError:
++    Progress = None
++
+ WORK = "/Volumes/Samsung SSD/beatbyte-bridge-work"
+ LIB = "/Volumes/Samsung SSD/beatbyte/songs"
+ CLI = f"{WORK}/beatbyte-cli"
+@@ -60,6 +65,14 @@
+     total = int(open(BYTES).read()) if os.path.exists(BYTES) else 0
+     todo = [c for c in selection if c["md5"] not in done]
+     log(f"{len(todo)} to fetch, {total/1e9:.1f} GB already downloaded")
++    if Progress is None:
++        return run(todo, total, None)
++    # stalled_after: a batch ends with the bridge import, which waits while the game runs
++    with Progress("bridge", total=len(todo), label="Bridge", unit="songs", icon="⬇", stalled_after=900) as p:
++        p.update(0, bytes=total)
++        run(todo, total, p)
++
++def run(todo, total, p):
+     for start in range(0, len(todo), BATCH):
+         batch_dir = f"{WORK}/batch"
+         shutil.rmtree(batch_dir, ignore_errors=True)
+@@ -87,6 +100,8 @@
+                 log("unpack failed:", safe, e); shutil.rmtree(f"{batch_dir}/{safe}", ignore_errors=True)
+             os.remove(sng)
+             handled.append(c["md5"])
++            if p:
++                p.update(start + len(handled), bytes=total)
+             time.sleep(0.3)
+         finish(batch_dir, handled)
+         log(f"batch {start // BATCH + 1}: {start + len(handled)}/{len(todo)}, {total/1e9:.2f} GB downloaded")

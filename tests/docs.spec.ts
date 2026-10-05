@@ -94,7 +94,7 @@ test('every protocol field is documented in PROTOCOL.md and read by the parser',
   const protocol = read('PROTOCOL.md')
   const parser = read('hooks/protocol.ts')
   const writer = read('python/taskline.py')
-  for (const field of ['v', 'label', 'icon', 'done', 'total', 'unit', 'bytes', 'bytes_total', 'status', 'message', 'started_at', 'updated_at', 'pid']) {
+  for (const field of ['v', 'label', 'icon', 'done', 'total', 'unit', 'bytes', 'bytes_total', 'status', 'message', 'started_at', 'updated_at', 'pid', 'stalled_after']) {
     assert.ok(protocol.includes(`| \`${field}\` |`), `PROTOCOL.md misses ${field}`)
     assert.ok(parser.includes(`o.${field}`), `parser ignores ${field}`)
     assert.ok(writer.includes(`"${field}"`), `Python writer never writes ${field}`)
@@ -103,7 +103,7 @@ test('every protocol field is documented in PROTOCOL.md and read by the parser',
 
 test('watcher fields in the README table are the ones the parser reads', () => {
   const src = read('hooks/watchers.ts')
-  for (const field of ['type', 'path', 'label', 'icon', 'id', 'unit', 'total', 'total_bytes', 'pattern', 'glob', 'active_within', 'enabled']) {
+  for (const field of ['type', 'path', 'label', 'icon', 'id', 'unit', 'total', 'total_bytes', 'pattern', 'glob', 'active_within', 'stalled_after', 'enabled']) {
     assert.ok(src.includes(`o.${field}`), `watchers.ts does not read ${field}`)
     assert.ok(README.includes(`\`${field}\``), `README watcher table misses ${field}`)
   }

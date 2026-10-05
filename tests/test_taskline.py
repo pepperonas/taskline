@@ -224,3 +224,11 @@ def test_cli_ls_marks_stalled_tasks(progress_dir):
     data["updated_at"] -= 120
     (progress_dir / "old.json").write_text(json.dumps(data))
     assert "stalled" in cli("ls").stdout
+
+
+def test_stalled_after_is_written_by_progress_and_cli(progress_dir):
+    with taskline.Progress("slow", total=3, stalled_after=600) as p:
+        p.advance()
+        assert load(progress_dir, "slow")["stalled_after"] == 600
+    cli("set", "batchy", "1", "9", "--stalled-after", "300")
+    assert load(progress_dir, "batchy")["stalled_after"] == 300

@@ -71,3 +71,8 @@ test('sanitize cuts by characters, not UTF-16 units', () => {
   assert.equal(sanitize(42, 5), '42')
   assert.equal(sanitize({}, 5), undefined)
 })
+
+test('stalled_after is read when positive', () => {
+  assert.equal(parseTask('{"done":1,"stalled_after":600}', 'x', MTIME)!.stalledAfter, 600)
+  assert.equal(parseTask('{"done":1,"stalled_after":-5}', 'x', MTIME)!.stalledAfter, undefined)
+})

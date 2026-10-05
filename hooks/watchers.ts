@@ -29,6 +29,8 @@ export type Watcher = {
   glob?: RegExp
   /** seconds: a source not modified for longer is not shown at all */
   activeWithin: number
+  /** seconds without a change before the task counts as stalled */
+  stalledAfter?: number
 }
 
 /** What a watcher measured on one poll. */
@@ -139,6 +141,8 @@ export function parseWatchers(text: string): { watchers: Watcher[]; errors: stri
     }
     const icon = sanitize(o.icon, 2)
     if (icon) w.icon = icon
+    const stall = num(o.stalled_after)
+    if (stall) w.stalledAfter = stall
 
     if (type === 'filesize') {
       const size = num(o.total_bytes) ?? num(o.total)
@@ -216,6 +220,7 @@ export function watcherTask(w: Watcher, r: Reading, now: number, firstSeen: numb
     path,
   }
   if (w.icon) task.icon = w.icon
+  if (w.stalledAfter) task.stalledAfter = w.stalledAfter
   if (r.bytes !== undefined) task.bytes = r.bytes
   const bt = r.bytesTotal ?? w.bytesTotal
   if (bt) task.bytesTotal = bt

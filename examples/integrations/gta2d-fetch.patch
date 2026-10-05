@@ -1,0 +1,111 @@
+--- a/tools/osm/fetch.mjs
++++ b/tools/osm/fetch.mjs
+@@ -3,8 +3,9 @@
+ //  - LOR-Prognoseräume (Geoportal Berlin, WFS): Stadtgrenze und Bezirke
+ //  - Berliner Baumbestand (Geoportal Berlin, WFS): Straßen- und Anlagenbäume
+ import { mkdir, writeFile, rename } from 'node:fs/promises';
+-import { createWriteStream } from 'node:fs';
+-import { Readable } from 'node:stream';
++import { createWriteStream, mkdirSync, renameSync, writeFileSync } from 'node:fs';
++import { homedir } from 'node:os';
++import { Readable, Transform } from 'node:stream';
+ import { pipeline } from 'node:stream/promises';
+ import { fileURLToPath } from 'node:url';
+ 
+@@ -20,6 +21,25 @@
+ const TRAFFIC_WFS = 'https://gdi.berlin.de/services/wfs/verkehrsmengen_2019?SERVICE=WFS&VERSION=2.0.0&REQUEST=GetFeature'
+   + '&TYPENAMES=verkehrsmengen_2019:dtvw2019kfz&SRSNAME=EPSG:4326&OUTPUTFORMAT=application/json&PROPERTYNAME=elem_nr,dtvw_kfz,geom&SORTBY=elem_nr';
+ 
++// Live-Fortschritt über dem Claude-Code-Prompt (taskline, Protokoll v1): eine JSON-Datei, atomar per rename.
++// Schlägt das Schreiben fehl, merkt der Download nichts davon.
++const TASKLINE = process.env.TASKLINE_DIR ?? `${homedir()}/.claude/progress`;
++const tlStart = Date.now() / 1000;
++let tlLast = 0, tlLabel = 'Karte';
++function progress(fields, force = false) {
++  if (fields.label) tlLabel = fields.label;
++  if (!force && Date.now() - tlLast < 1000) return;
++  tlLast = Date.now();
++  try {
++    mkdirSync(TASKLINE, { recursive: true });
++    const tmp = `${TASKLINE}/.gta2d-map.json.${process.pid}.tmp`;
++    writeFileSync(tmp, JSON.stringify({ v: 1, icon: '🗺', unit: 'items', total: null, status: 'running',
++      started_at: tlStart, updated_at: Date.now() / 1000, pid: process.pid, ...fields, label: tlLabel }));
++    renameSync(tmp, `${TASKLINE}/gta2d-map.json`);
++  } catch { /* nur Anzeige */ }
++}
++const stage = (label) => (n, all) => progress({ label: `Karte · ${label}`, done: n, total: all ?? null, unit: 'items' });
++
+ const round6 = (v) => Math.round(v * 1e6) / 1e6;
+ async function pages(url, onPage) {
+   const out = [];
+@@ -83,22 +103,30 @@
+   return out;
+ }
+ 
+-async function download(url, file) {
++async function download(url, file, label = file.split('/').pop()) {
++  progress({ label: `Karte · ${label}`, done: 0, total: null, unit: 'bytes' }, true);
+   const r = await fetch(url);
+   if (!r.ok) throw new Error(`${url}: HTTP ${r.status}`);
+-  await pipeline(Readable.fromWeb(r.body), createWriteStream(file + '.part'));
++  const total = Number(r.headers.get('content-length')) || null;
++  let got = 0;
++  const count = new Transform({ transform(chunk, _enc, cb) {
++    got += chunk.length;
++    progress({ label: `Karte · ${label}`, done: got, total, unit: 'bytes' });
++    cb(null, chunk);
++  } });
++  await pipeline(Readable.fromWeb(r.body), count, createWriteStream(file + '.part'));
+   await rename(file + '.part', file);
+   return r.url; // nach Weiterleitung: Datei mit Datum
+ }
+ 
+ async function fetchLife() {
+   console.log('Einwohnerdichte 2022 (Geoportal Berlin) …');
+-  const dichte = await fetchDensity({ onPage: (n, all) => process.stdout.write(`\r  ${n} / ${all}   `) });
++  const dichte = await fetchDensity({ onPage: (n, all) => { process.stdout.write(`\r  ${n} / ${all}   `); stage('Dichte')(n, all); } });
+   process.stdout.write('\n');
+   if (dichte.length < 20000) throw new Error(`Einwohnerdichte unvollständig: ${dichte.length} Blöcke`);
+   await writeFile(raw + 'dichte.json', JSON.stringify(dichte));
+   console.log('Verkehrsmengen DTVw 2019 (Geoportal Berlin) …');
+-  const verkehr = await fetchTraffic({ onPage: (n, all) => process.stdout.write(`\r  ${n} / ${all}   `) });
++  const verkehr = await fetchTraffic({ onPage: (n, all) => { process.stdout.write(`\r  ${n} / ${all}   `); stage('Verkehr')(n, all); } });
+   process.stdout.write('\n');
+   if (verkehr.length < 5000) throw new Error(`Verkehrsmengen unvollständig: ${verkehr.length} Abschnitte`);
+   await writeFile(raw + 'verkehr.json', JSON.stringify(verkehr));
+@@ -109,9 +137,17 @@
+ const GTFS = 'https://www.vbb.de/vbbgtfs';
+ async function fetchGtfs() {
+   console.log(`VBB-Fahrplan (${GTFS}) …`);
+-  await download(GTFS, raw + 'gtfs.zip');
++  await download(GTFS, raw + 'gtfs.zip', 'Fahrplan');
+ }
+ 
++// Ende und Abbruch melden (fertig → grün, Fehler → rot mit Meldung)
++const isMain = import.meta.url === `file://${process.argv[1]}`;
++if (isMain) {
++  process.on('exit', (code) => progress(code === 0 ? { label: 'Karte', status: 'done', done: 0, total: null } : { status: 'error', done: 0, message: `abgebrochen (exit ${code})` }, true));
++  process.on('uncaughtException', (err) => { progress({ status: 'error', done: 0, message: String(err.message).slice(0, 160) }, true); console.error(err); process.exit(1); });
++  process.on('unhandledRejection', (err) => { progress({ status: 'error', done: 0, message: String(err?.message ?? err).slice(0, 160) }, true); console.error(err); process.exit(1); });
++}
++
+ if (import.meta.url === `file://${process.argv[1]}` && process.argv.includes('--gtfs')) {
+   await mkdir(raw, { recursive: true });
+   await fetchGtfs();
+@@ -123,13 +159,14 @@
+   await mkdir(raw, { recursive: true });
+   const t0 = Date.now();
+   console.log('LOR-Prognoseräume (Geoportal Berlin) …');
++  progress({ label: 'Karte · LOR', done: 0 }, true);
+   const lor = JSON.parse(await get(LOR));
+   if (lor.features.length < 58) throw new Error(`LOR unvollständig: ${lor.features.length} Prognoseräume`);
+   await writeFile(raw + 'lor.json', JSON.stringify(lor));
+   console.log(`OpenStreetMap-Auszug (${PBF}) …`);
+-  const pbfUrl = await download(PBF, raw + 'berlin.osm.pbf');
++  const pbfUrl = await download(PBF, raw + 'berlin.osm.pbf', 'OSM');
+   console.log('Baumbestand (Geoportal Berlin) …');
+-  const trees = await fetchTrees({ onPage: (l, n, all) => process.stdout.write(`\r  ${l}: ${n} / ${all}   `) });
++  const trees = await fetchTrees({ onPage: (l, n, all) => { process.stdout.write(`\r  ${l}: ${n} / ${all}   `); stage(l === 'strassenbaeume' ? 'Straßenbäume' : 'Anlagenbäume')(n, all); } });
+   process.stdout.write('\n');
+   await writeFile(raw + 'baeume.json', JSON.stringify(trees));
+   await fetchLife();

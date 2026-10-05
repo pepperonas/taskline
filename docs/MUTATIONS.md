@@ -18,5 +18,8 @@ A test that has never been seen red is not an assurance. Each guarded behaviour 
 | `python/taskline.py` | rename to the wrong target (not atomic) | python | killed |
 | `python/taskline.py` | Ctrl+C counted as done | python | killed |
 | `python/taskline.py` | no throttling | python | killed |
+| `hooks/state.ts` | a task's own `stalled_after` ignored | node | killed |
+| `hooks/watchers.ts` | a watcher's `stalled_after` not passed to its task | node | killed |
+| `python/taskline.py` | `Progress` drops `stalled_after` | python | killed |
 
 Three survivors in the first round were real gaps: hiding expired tasks was only covered in the node suite (the engine test passed because cleanup removed the file anyway), and neither the mid-write fallback nor the survey rule had any test. All three got one.

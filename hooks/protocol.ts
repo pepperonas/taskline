@@ -78,6 +78,7 @@ export function parseTask(text: string, id: string, mtimeMs: number, path?: stri
   const startedAt = secondsToMs(o.started_at)
   if (startedAt) task.startedAt = startedAt
   if (Number.isInteger(o.pid) && (o.pid as number) > 0) task.pid = o.pid as number
+  if (finite(o.stalled_after) && o.stalled_after > 0) task.stalledAfter = o.stalled_after
   if (path) task.path = path
   return task
 }

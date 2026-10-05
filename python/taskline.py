@@ -106,6 +106,7 @@ def report(
     status: str = "running",
     message: Optional[str] = _UNSET,
     pid: Optional[int] = _UNSET,
+    stalled_after: Optional[float] = _UNSET,
 ) -> Dict[str, Any]:
     """Write one progress state now (no throttling) and return it.
 
@@ -136,6 +137,7 @@ def report(
         "started_at": prev.get("started_at") if prev.get("status", "running") == "running" and prev else now,
         "updated_at": now,
         "pid": pick("pid", pid),
+        "stalled_after": pick("stalled_after", stalled_after),
     }
     if data["started_at"] is None:
         data["started_at"] = now
@@ -239,6 +241,7 @@ class Progress:
         throttle: float = 1.0,
         pid: Optional[int] = _UNSET,
         keep: bool = False,
+        stalled_after: Optional[float] = None,
     ) -> None:
         self.id = _check_id(task_id)
         self.total = total
@@ -252,6 +255,7 @@ class Progress:
         self.throttle = throttle
         self.pid = os.getpid() if pid is _UNSET else pid
         self.keep = keep
+        self.stalled_after = stalled_after
         self.closed = False
         self._last_write = 0.0
         self._started = False
@@ -326,6 +330,7 @@ class Progress:
                 status=status,
                 message=self.message,
                 pid=self.pid,
+                stalled_after=self.stalled_after,
             )
             self._started = True
             self._last_write = now
@@ -372,7 +377,7 @@ usage: taskline <command> [args]
 
   set <id> <done> [total] [options]   report progress (total "-" = unknown)
       --label TEXT  --unit UNIT  --icon GLYPH  --message TEXT
-      --bytes N  --bytes-total N  --pid PID
+      --bytes N  --bytes-total N  --pid PID  --stalled-after SECONDS
   add <id> [n] [--bytes N]            add n (default 1) to done
   done <id> [--message TEXT]          mark done
   fail <id> [message]                 mark failed
@@ -439,7 +444,8 @@ def main(argv: Optional[List[str]] = None) -> int:
     try:
         if cmd == "set":
             pos, o = _opts(rest, {"label": "label", "unit": "unit", "icon": "icon", "message": "message",
-                                  "bytes": "bytes", "bytes-total": "bytes_total", "pid": "pid"})
+                                  "bytes": "bytes", "bytes-total": "bytes_total", "pid": "pid",
+                                  "stalled-after": "stalled_after"})
             if len(pos) not in (2, 3):
                 raise ValueError("set needs <id> <done> [total]")
             kw: Dict[str, Any] = {k: v for k, v in o.items() if k in ("label", "unit", "icon", "message")}
@@ -448,6 +454,8 @@ def main(argv: Optional[List[str]] = None) -> int:
                     kw[key] = _num(o[key])
             if "pid" in o:
                 kw["pid"] = int(o["pid"])
+            if "stalled_after" in o:
+                kw["stalled_after"] = _num(o["stalled_after"])
             if len(pos) == 3:
                 kw["total"] = None if pos[2] in ("-", "?", "null") else _num(pos[2])
             report(pos[0], _num(pos[1]), **kw)

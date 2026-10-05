@@ -16,6 +16,8 @@ export type Task = {
   /** epoch ms of the last real progress */
   updatedAt: number
   pid?: number
+  /** seconds without an update before this task counts as stalled (overrides the setting) */
+  stalledAfter?: number
   /** where it came from: a progress file or a watcher */
   source: 'file' | 'watcher'
   /** the file behind it (progress file, or the watched path) */

@@ -106,4 +106,7 @@ test('watcherTask: idle sources stay out, totals and done are derived', () => {
   // a total read from the log beats the configured one
   const [l] = parseWatchers('[{"type":"logtail","path":"/l","pattern":"(?<done>\\\\d+)","total":10}]').watchers
   assert.equal(watcherTask(l!, { done: 5, total: 50, mtimeMs: NOW }, NOW, NOW, '/l')!.total, 50)
+  // a watcher's stalled_after travels with its task
+  const [s] = parseWatchers('[{"type":"logtail","path":"/l","pattern":"(?<done>\\\\d+)","stalled_after":600}]').watchers
+  assert.equal(watcherTask(s!, { done: 5, mtimeMs: NOW }, NOW, NOW, '/l')!.stalledAfter, 600)
 })

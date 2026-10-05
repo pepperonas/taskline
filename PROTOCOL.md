@@ -49,6 +49,7 @@ reader sees either the old or the new file, never a mix.
 | `started_at` | number | no | Unix time in seconds (fractions allowed). |
 | `updated_at` | number | yes | Unix time in seconds of the last real progress. Drives stall detection. |
 | `pid` | int | no | Process id of the writer. If set and the process is gone while `status` is still `running`, the task is shown as **aborted**. |
+| `stalled_after` | number | no | Seconds without an update before this task counts as stalled; overrides the reader's setting. For jobs that report rarely (one line per batch). |
 
 Unknown fields are ignored, so later versions can add fields without breaking
 older readers. All strings are stripped of control characters (including
@@ -78,7 +79,7 @@ ANSI escapes) before they reach the terminal.
 | Condition | Shown as | Visible for |
 |---|---|---|
 | `running`, updated recently | bar, count, rate, ETA (spinner if `total` is unknown) | while it runs |
-| `running`, no update for `stalledAfter` s (default 60) | ⏸ stalled, with the age | until it updates again |
+| `running`, no update for `stalled_after` s (the task's own, else the setting, default 60) | ⏸ stalled, with the age | until it updates again |
 | `running`, `pid` set and that process is gone | ✖ aborted | `errorVisible` s (default 3600) |
 | `done` | ✔ in green, with the elapsed time | `doneVisible` s (default 10), then the file is removed |
 | `error` | ✖ in red, with `message` | `errorVisible` s, then the file is removed |

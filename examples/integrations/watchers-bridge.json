@@ -1,0 +1,15 @@
+{
+  "watchers": [
+    {
+      "id": "bridge",
+      "type": "logtail",
+      "label": "Bridge",
+      "icon": "⬇",
+      "path": "/Volumes/Samsung SSD/beatbyte-bridge-work/fetch2.log",
+      "pattern": "batch \\d+: (?<done>\\d+)/(?<total>\\d+), (?<bytes>[\\d.]+ GB) downloaded",
+      "unit": "songs",
+      "stalled_after": 900,
+      "active_within": 3600
+    }
+  ]
+}

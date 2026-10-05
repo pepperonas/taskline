@@ -15,9 +15,9 @@
 <h3>👉 <code>/plugin marketplace add pepperonas/taskline</code> · <code>/plugin install taskline@pepperonas-taskline</code></h3>
 
 [![version](https://img.shields.io/badge/version-0.1.0-7B4DFF?style=for-the-badge&logo=anthropic&logoColor=white)](CHANGELOG.md)
-[![node tests](https://img.shields.io/badge/node%20tests-76-2E9E5B?style=for-the-badge&logo=nodedotjs&logoColor=white)](tests)
+[![node tests](https://img.shields.io/badge/node%20tests-78-2E9E5B?style=for-the-badge&logo=nodedotjs&logoColor=white)](tests)
 [![engine tests](https://img.shields.io/badge/engine%20tests-18-2E9E5B?style=for-the-badge&logo=anthropic&logoColor=white)](hooks)
-[![python tests](https://img.shields.io/badge/python%20tests-29-2E9E5B?style=for-the-badge&logo=python&logoColor=white)](tests/test_taskline.py)
+[![python tests](https://img.shields.io/badge/python%20tests-30-2E9E5B?style=for-the-badge&logo=python&logoColor=white)](tests/test_taskline.py)
 
 [![CI](https://img.shields.io/github/actions/workflow/status/pepperonas/taskline/ci.yml?branch=main&label=CI&logo=github)](https://github.com/pepperonas/taskline/actions/workflows/ci.yml)
 [![Claude Code mod](https://img.shields.io/badge/Claude%20Code-mod-D97757?logo=anthropic&logoColor=white)](https://code.claude.com/docs/en/plugins/mods/overview)
@@ -126,7 +126,7 @@ for tile in track(tiles, "tiles", label="Tiles", unit="files"):
     render(tile)
 ```
 
-`Progress` writes at most once a second (always the first and the last state), records its own `pid` so a crash shows as *aborted*, and **never raises into your job** — a full disk costs the display, not the download. One-shot calls are there too: `report(id, done, total, ...)`, `finish(id)`, `fail(id, message)`, `remove(id)`.
+A job that reports rarely (once per batch) passes `stalled_after=600` so the gaps don't read as stalls. `Progress` writes at most once a second (always the first and the last state), records its own `pid` so a crash shows as *aborted*, and **never raises into your job** — a full disk costs the display, not the download. One-shot calls are there too: `report(id, done, total, ...)`, `finish(id)`, `fail(id, message)`, `remove(id)`.
 
 ### Shell
 
@@ -142,7 +142,7 @@ Pass **`--pid $$`** — the CLI process itself exits immediately, your script's 
 
 | Command | What it does |
 |---|---|
-| `taskline set <id> <done> [total]` | report progress (`--label --unit --icon --message --bytes --bytes-total --pid`) |
+| `taskline set <id> <done> [total]` | report progress (`--label --unit --icon --message --bytes --bytes-total --pid --stalled-after`) |
 | `taskline add <id> [n]` | add `n` (default 1), `--bytes` adds bytes |
 | `taskline done <id>` | mark done (fills a known total) |
 | `taskline fail <id> [message]` | mark failed |
@@ -159,6 +159,8 @@ Write `~/.claude/progress/<id>.json` atomically (temp file in the same folder, t
 { "v": 1, "label": "Bridge", "done": 275, "total": 1000, "unit": "files",
   "status": "running", "updated_at": 1759700123.4, "pid": 4242 }
 ```
+
+Worked examples for a real Python batch download and a Node fetch script: **[docs/INTEGRATIONS.md](docs/INTEGRATIONS.md)**.
 
 ### Jobs that report nothing: watchers
 
@@ -185,6 +187,7 @@ Write `~/.claude/progress/<id>.json` atomically (temp file in the same folder, t
 | `pattern` | logtail | regex with a `(?<done>…)` group, optional `total`, `bytes`, `bytes_total`, `message`; Python's `(?P<name>…)` works too; the **last** match in the last 64 KB counts |
 | `glob` | dircount | one level, `*` `?` `[ab]` `{png,jpg}` |
 | `active_within` | all | seconds; a source not modified for longer is not shown at all (default 600) |
+| `stalled_after` | all | seconds without a change before it counts as stalled (default: the `stalledAfter` setting) — for logs written once per batch |
 | `enabled` | all | `false` keeps an entry without using it |
 
 The file is re-read when it changes; mistakes are listed by `/taskline` and never break the band.
@@ -263,6 +266,7 @@ taskline reads only the progress directory, the watchers file and the paths you 
 | [`bin/taskline`](bin/taskline) | CLI entry point |
 | [`PROTOCOL.md`](PROTOCOL.md) | the progress file format, v1 |
 | [`docs/DESIGN.md`](docs/DESIGN.md) | design decisions |
+| [`docs/INTEGRATIONS.md`](docs/INTEGRATIONS.md) | worked examples: a Python batch download, a Node fetch script, a logtail watcher |
 
 Everything but `register.tsx` is pure and tested without Claude Code.
 
