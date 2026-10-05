@@ -1,0 +1,77 @@
+{
+  "name": "taskline",
+  "version": "0.1.0",
+  "description": "Live progress of every long-running job above the Claude Code prompt: bars, speed, ETA, stall and crash detection. Jobs report via a one-file JSON protocol (Python helper and CLI included) or are watched from their files and logs.",
+  "types": "./types/index.d.ts",
+  "userConfig": {
+    "layout": {
+      "type": "string",
+      "title": "Layout",
+      "description": "auto: one line when everything fits, else one row per task · single: always one line · stacked: always one row per task",
+      "default": "auto"
+    },
+    "maxTasks": {
+      "type": "number",
+      "title": "Max tasks",
+      "description": "How many tasks to draw at most; the rest fold into \"+N more\"",
+      "default": 3
+    },
+    "stalledAfter": {
+      "type": "number",
+      "title": "Stalled after (s)",
+      "description": "A running task with no update for this long is shown as stalled",
+      "default": 60
+    },
+    "doneVisible": {
+      "type": "number",
+      "title": "Done visible (s)",
+      "description": "How long a finished task stays (green) before it disappears",
+      "default": 10
+    },
+    "errorVisible": {
+      "type": "number",
+      "title": "Error visible (s)",
+      "description": "How long a failed or aborted task stays (red) unless you clear it",
+      "default": 3600
+    },
+    "color": {
+      "type": "boolean",
+      "title": "Color",
+      "description": "Colored bars and states (NO_COLOR in the environment turns it off too)",
+      "default": true
+    },
+    "animation": {
+      "type": "boolean",
+      "title": "Animation",
+      "description": "Spinner and smooth ETA countdown at 4 fps; off = one redraw per second",
+      "default": true
+    },
+    "cleanup": {
+      "type": "boolean",
+      "title": "Clean up",
+      "description": "Delete progress files of finished tasks once they are no longer shown",
+      "default": true
+    },
+    "progressDir": {
+      "type": "string",
+      "title": "Progress directory",
+      "description": "Where jobs write their progress files",
+      "default": "~/.claude/progress"
+    },
+    "watchersFile": {
+      "type": "string",
+      "title": "Watchers file",
+      "description": "JSON file with filesize / logtail / dircount watchers for jobs that report nothing",
+      "default": "~/.claude/taskline/watchers.json"
+    }
+  },
+  "author": {
+    "name": "Martin Pfeffer",
+    "email": "martin.pfeffer@celox.io",
+    "url": "https://celox.io"
+  },
+  "homepage": "https://github.com/pepperonas/taskline",
+  "repository": "https://github.com/pepperonas/taskline",
+  "license": "MIT",
+  "keywords": ["mod", "function-hooks", "ui", "progress", "downloads", "eta", "status"]
+}

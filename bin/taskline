@@ -1,0 +1,12 @@
+#!/usr/bin/env python3
+"""taskline CLI — report progress from shell scripts. See `taskline --help`."""
+import os
+import sys
+
+# Works through a symlink in ~/.local/bin: find python/ next to the real file.
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), "python"))
+
+from taskline import main  # noqa: E402
+
+if __name__ == "__main__":
+    sys.exit(main())

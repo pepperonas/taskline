@@ -1,0 +1,24 @@
+{
+  "name": "taskline",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Claude Code mod: live progress of long-running jobs above the prompt",
+  "type": "module",
+  "license": "MIT",
+  "author": "Martin Pfeffer <martin.pfeffer@celox.io> (https://celox.io)",
+  "repository": "github:pepperonas/taskline",
+  "scripts": {
+    "test": "node --import tsx --test tests/*.spec.ts",
+    "test:engine": "claude plugin test .",
+    "test:python": "python3 -m pytest -q tests",
+    "validate": "claude plugin validate .",
+    "typecheck": "tsc -p ."
+  },
+  "devDependencies": {
+    "tsx": "^4.20.0",
+    "typescript": "^5.9.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

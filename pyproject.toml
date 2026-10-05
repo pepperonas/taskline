@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "taskline"
+version = "0.1.0"
+description = "Report job progress to the taskline Claude Code mod (stdlib only)"
+readme = "README.md"
+requires-python = ">=3.8"
+license = { text = "MIT" }
+authors = [{ name = "Martin Pfeffer", email = "martin.pfeffer@celox.io" }]
+urls = { Homepage = "https://github.com/pepperonas/taskline" }
+
+[project.scripts]
+taskline = "taskline:main"
+
+[tool.setuptools]
+package-dir = { "" = "python" }
+py-modules = ["taskline"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

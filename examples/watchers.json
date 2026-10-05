@@ -1,0 +1,30 @@
+{
+  "watchers": [
+    {
+      "id": "iso",
+      "type": "filesize",
+      "label": "Ubuntu ISO",
+      "icon": "⬇",
+      "path": "~/Downloads/ubuntu-24.04-desktop-amd64.iso",
+      "total_bytes": "6.1 GB"
+    },
+    {
+      "id": "fetch",
+      "type": "logtail",
+      "label": "Fetch",
+      "icon": "⬇",
+      "path": "~/projects/scraper/fetch.log",
+      "pattern": "\\[(?<done>[\\d,]+)/(?<total>[\\d,]+)\\]",
+      "unit": "files",
+      "active_within": 300
+    },
+    {
+      "id": "thumbs",
+      "type": "dircount",
+      "label": "Thumbnails",
+      "path": "~/projects/site/public/thumbs",
+      "glob": "*.{webp,png}",
+      "total": 5000
+    }
+  ]
+}
