@@ -1,6 +1,6 @@
 # CLAUDE.md — taskline
 
-Claude Code mod (function-hook plugin) that draws live progress of long-running jobs above the prompt. Repo `pepperonas/taskline`; local folder is still called `statusline` (the project started as a statusLine script — see docs/DESIGN.md). English code and docs.
+Claude Code mod (function-hook plugin) that draws live progress of long-running jobs above the prompt. Repo `pepperonas/taskline`, local folder `~/claude/_mods/taskline` (it started as a statusLine script and was renamed — see docs/DESIGN.md). English code and docs.
 
 ## Layout
 - `hooks/register.tsx` — the only file with I/O (`$.fs`, `$.process`, `$.clock`); everything else in `hooks/` is pure and unit-tested.
