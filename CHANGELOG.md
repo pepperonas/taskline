@@ -8,6 +8,7 @@ All notable changes to this project are documented here. The format follows
 
 ### Added
 
+- A glob in the file name of a `filesize` or `logtail` path (`~/w/fetch*.log`) follows the most recently modified match; a new file counts as a new run.
 - `stalled_after` per task (protocol, watchers, Python `Progress`, CLI `--stalled-after`): jobs that report once per batch no longer read as stalled between batches.
 - Social card (`docs/social.png`, 1280×640) at the top of the README, rendered by `npm run screenshots`.
 - `docs/INTEGRATIONS.md` with two worked examples (Bridge fetch in Python, gta2d map fetch in Node) as patches, and a logtail watcher for the Bridge log.

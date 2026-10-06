@@ -5,7 +5,7 @@
       "type": "logtail",
       "label": "Bridge",
       "icon": "⬇",
-      "path": "/Volumes/Samsung SSD/beatbyte-bridge-work/fetch2.log",
+      "path": "/Volumes/Samsung SSD/beatbyte-bridge-work/fetch*.log",
       "pattern": "batch \\d+: (?<done>\\d+)/(?<total>\\d+), (?<bytes>[\\d.]+ GB) downloaded",
       "unit": "songs",
       "stalled_after": 900,

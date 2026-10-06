@@ -85,6 +85,32 @@ export function globToRegExp(glob: string): RegExp {
   return new RegExp(`^${re}$`)
 }
 
+const GLOB_CHARS = /[*?[{]/
+
+/**
+ * A glob in the file name of a filesize or logtail path (`~/w/fetch*.log`):
+ * the folder to list and the name pattern. null for a plain path. Only the
+ * last segment may be a glob — one level, like dircount.
+ */
+export function splitGlob(path: string): { dir: string; glob: RegExp } | null {
+  const cut = path.lastIndexOf('/')
+  if (cut < 0) return null
+  const dir = path.slice(0, cut) || '/'
+  const name = path.slice(cut + 1)
+  if (!GLOB_CHARS.test(name) || GLOB_CHARS.test(dir)) return null
+  return { dir, glob: globToRegExp(name) }
+}
+
+/** The most recently modified file matching `glob` (a tie goes to the later name). */
+export function newestMatch(entries: readonly { name: string; kind: string; mtimeMs: number }[], glob: RegExp): string | null {
+  let best: { name: string; mtimeMs: number } | null = null
+  for (const e of entries) {
+    if (e.kind === 'dir' || e.name.startsWith('.') || !glob.test(e.name)) continue
+    if (!best || e.mtimeMs > best.mtimeMs || (e.mtimeMs === best.mtimeMs && e.name > best.name)) best = e
+  }
+  return best?.name ?? null
+}
+
 /** Python's `(?P<name>…)` is the common spelling in the wild; JS wants `(?<name>…)`. */
 export function compilePattern(pattern: string): RegExp {
   return new RegExp(pattern.replace(/\(\?P</g, '(?<'), 'gm')

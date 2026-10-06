@@ -185,6 +185,24 @@ test('a logtail watcher reads the last match of the log', async ($, on) => {
   expect(t).toContain('37/400 files')
 })
 
+test('a globbed logtail path follows the newest log: a new run takes over', async ($, on) => {
+  const w = world(on)
+  w.write(WATCHERS, JSON.stringify({ watchers: [{ id: 'fetch', type: 'logtail', label: 'Fetch', path: '~/work/fetch*.log', pattern: '\\[(?<done>\\d+)/(?<total>\\d+)\\]', unit: 'files' }] }))
+  w.write(`${HOME}/work/fetch2.log`, '[390/400] old\n')
+  await start($)
+  await tick(w.clock)
+  const ui = await mount($)
+  expect(await shown(ui)).toContain('390/400 files')
+  await tick(w.clock)
+  w.write(`${HOME}/work/fetch3.log`, '[12/200] new\n')
+  await tick(w.clock)
+  const t = await shown(ui)
+  expect(t).toContain('12/200 files')
+  expect(t).not.toContain('390/400')
+  expect(t).not.toContain('/s') // a new run: no speed carried over from the old log's start
+  expect((await run($, '')).text).toContain(`${HOME}/work/fetch3.log`)
+})
+
 test('NO_COLOR removes every color', async ($, on) => {
   const w = world(on, { NO_COLOR: '1' })
   w.task('x', { label: 'X', done: 1, total: 4 })

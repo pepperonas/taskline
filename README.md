@@ -15,8 +15,8 @@
 <h3>👉 <code>/plugin marketplace add pepperonas/taskline</code> · <code>/plugin install taskline@pepperonas-taskline</code></h3>
 
 [![version](https://img.shields.io/badge/version-0.1.0-7B4DFF?style=for-the-badge&logo=anthropic&logoColor=white)](CHANGELOG.md)
-[![node tests](https://img.shields.io/badge/node%20tests-78-2E9E5B?style=for-the-badge&logo=nodedotjs&logoColor=white)](tests)
-[![engine tests](https://img.shields.io/badge/engine%20tests-18-2E9E5B?style=for-the-badge&logo=anthropic&logoColor=white)](hooks)
+[![node tests](https://img.shields.io/badge/node%20tests-81-2E9E5B?style=for-the-badge&logo=nodedotjs&logoColor=white)](tests)
+[![engine tests](https://img.shields.io/badge/engine%20tests-19-2E9E5B?style=for-the-badge&logo=anthropic&logoColor=white)](hooks)
 [![python tests](https://img.shields.io/badge/python%20tests-30-2E9E5B?style=for-the-badge&logo=python&logoColor=white)](tests/test_taskline.py)
 
 [![CI](https://img.shields.io/github/actions/workflow/status/pepperonas/taskline/ci.yml?branch=main&label=CI&logo=github)](https://github.com/pepperonas/taskline/actions/workflows/ci.yml)
@@ -184,7 +184,7 @@ Worked examples for a real Python batch download and a Node fetch script: **[doc
 | Field | Types | Meaning |
 |---|---|---|
 | `type` | all | `filesize`, `logtail` or `dircount` |
-| `path` | all | file, log or folder; `~` works |
+| `path` | all | file, log or folder; `~` works. For filesize and logtail the file name may be a glob (`~/w/fetch*.log`): the most recently modified match is read, so a new run's log takes over by itself |
 | `label`, `icon`, `id`, `unit` | all | display; `id` defaults to the file name |
 | `total` | all | expected count (a `total` group in the log wins) |
 | `total_bytes` | filesize, logtail | expected size, `"6.1 GB"` or a number |
@@ -279,7 +279,7 @@ Everything but `register.tsx` is pure and tested without Claude Code.
 Three suites:
 
 - **Node suite** — `tests/*.spec.ts`, plain `node:test`: formatting, protocol parsing (broken files, injection attempts), the EMA (uneven sample spacing, counter resets), phases and order, every layout at every width from 1 to 120 columns, watchers, and **drift guards** that hold this README to the code (versions, test counts, config fields, commands, protocol fields).
-- **Engine suite** — `hooks/*.test.tsx`, run by `claude plugin test .` against Claude Code's own engine with a faked file system, clock and processes: the band on terminal *and* desktop, stall and recovery, a dead pid, done → hidden → cleaned up, errors and `/taskline clear`, a file caught mid-write, a broken file next to a good one, a logtail watcher, `NO_COLOR`, a narrow band, the survey yielding, every command.
+- **Engine suite** — `hooks/*.test.tsx`, run by `claude plugin test .` against Claude Code's own engine with a faked file system, clock and processes: the band on terminal *and* desktop, stall and recovery, a dead pid, done → hidden → cleaned up, errors and `/taskline clear`, a file caught mid-write, a broken file next to a good one, a logtail watcher, a globbed log path switching to a new run, `NO_COLOR`, a narrow band, the survey yielding, every command.
 - **Python suite** — `tests/test_taskline.py` with pytest: atomic writes, throttling, the context manager's done/error/interrupted, the CLI.
 
 **Every new test is mutated once.** A test never seen red is not an assurance, so each guarded behaviour gets its bug put back and the suite must go red — see [docs/MUTATIONS.md](docs/MUTATIONS.md).

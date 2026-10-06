@@ -16,11 +16,11 @@ and logs one line per batch:
 ### Without touching the script: a logtail watcher
 
 [`examples/integrations/watchers-bridge.json`](../examples/integrations/watchers-bridge.json)
-reads the last of those lines from `fetch2.log`:
+reads the last of those lines from the newest `fetch*.log`:
 
 ```json
 { "id": "bridge", "type": "logtail", "label": "Bridge", "icon": "⬇",
-  "path": "/Volumes/Samsung SSD/beatbyte-bridge-work/fetch2.log",
+  "path": "/Volumes/Samsung SSD/beatbyte-bridge-work/fetch*.log",
   "pattern": "batch \\d+: (?<done>\\d+)/(?<total>\\d+), (?<bytes>[\\d.]+ GB) downloaded",
   "unit": "songs", "stalled_after": 900, "active_within": 3600 }
 ```
@@ -30,7 +30,9 @@ reads the last of those lines from `fetch2.log`:
   60 s default the job would read as stalled between every batch.
 - **`active_within: 3600`** — an hour after the last line the old log stops
   showing up.
-- A new run that logs to another file (`fetch3.log`) needs the `path` updated.
+- **`fetch*.log`** — the glob follows the most recently modified log, so a new
+  run that logs to `fetch3.log` takes over without touching the config; its
+  speed and ETA start fresh.
 
 Copy it to `~/.claude/taskline/watchers.json` (or merge its entry into the
 `watchers` list there). taskline picks the change up within a second.

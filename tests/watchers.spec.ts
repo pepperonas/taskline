@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 
-import { compilePattern, countMatches, expandHome, globToRegExp, parseWatchers, quantity, readLog, watcherTask } from '../hooks/watchers.ts'
+import { compilePattern, countMatches, expandHome, globToRegExp, newestMatch, parseWatchers, quantity, readLog, splitGlob, watcherTask } from '../hooks/watchers.ts'
 
 const NOW = 1_000_000_000
 
@@ -109,4 +109,41 @@ test('watcherTask: idle sources stay out, totals and done are derived', () => {
   // a watcher's stalled_after travels with its task
   const [s] = parseWatchers('[{"type":"logtail","path":"/l","pattern":"(?<done>\\\\d+)","stalled_after":600}]').watchers
   assert.equal(watcherTask(s!, { done: 5, mtimeMs: NOW }, NOW, NOW, '/l')!.stalledAfter, 600)
+})
+
+test('splitGlob: a glob in the file name splits off its folder; plain paths and folder globs do not', () => {
+  const g = splitGlob('/w/beat work/fetch*.log')!
+  assert.ok(g.glob)
+  assert.equal(g.dir, '/w/beat work')
+  assert.ok(g.glob.test('fetch3.log') && g.glob.test('fetch.log') && !g.glob.test('fetch3.log.bak'))
+  assert.equal(splitGlob('/w/fetch3.log'), null)
+  assert.equal(splitGlob('/w/*/fetch*.log'), null) // one level: only the last segment
+  assert.equal(splitGlob('*.log'), null) // no folder to list
+  assert.equal(splitGlob('/w/run-{a,b}.log')?.dir, '/w')
+})
+
+test('newestMatch: the most recently modified matching file, never a folder or a dotfile', () => {
+  const glob = globToRegExp('fetch*.log')
+  const entries = [
+    { name: 'fetch.log', kind: 'file', mtimeMs: 100 },
+    { name: 'fetch3.log', kind: 'file', mtimeMs: 300 },
+    { name: 'fetch2.log', kind: 'file', mtimeMs: 200 },
+    { name: 'fetch9.log', kind: 'dir', mtimeMs: 900 },
+    { name: '.fetch8.log', kind: 'file', mtimeMs: 800 },
+    { name: 'other.log', kind: 'file', mtimeMs: 700 },
+  ]
+  assert.equal(newestMatch(entries, glob), 'fetch3.log')
+  assert.equal(newestMatch(entries.slice(3), glob), null)
+  // equal times: the later name wins, so fetch10 beats fetch9 only by time, but a tie is stable
+  assert.equal(newestMatch([{ name: 'b.log', kind: 'file', mtimeMs: 5 }, { name: 'a.log', kind: 'file', mtimeMs: 5 }], globToRegExp('*.log')), 'b.log')
+})
+
+test('parseWatchers keeps a globbed path for filesize and logtail as written', () => {
+  const { watchers, errors } = parseWatchers(
+    JSON.stringify([{ type: 'logtail', path: '~/w/fetch*.log', pattern: '(?<done>\\d+)' }, { type: 'filesize', path: '~/dl/*.iso', total_bytes: 10 }]),
+  )
+  assert.deepEqual(errors, [])
+  assert.equal(watchers[0]!.path, '~/w/fetch*.log')
+  assert.ok(/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(watchers[0]!.id), `id ${watchers[0]!.id} is path-safe`)
+  assert.ok(/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(watchers[1]!.id), `id ${watchers[1]!.id} is path-safe`)
 })

@@ -17,7 +17,7 @@ import { MAX_FILE_BYTES, idOfFile, parseTask } from './protocol'
 import { DEFAULT_TIMING, phaseOf, pidsToCheck } from './state'
 import type { Timing } from './state'
 import { buildViews, expiredFiles, isAnimated } from './views'
-import { TAIL_BYTES, countMatches, expandHome, parseWatchers, readLog, watcherTask } from './watchers'
+import { TAIL_BYTES, countMatches, expandHome, newestMatch, parseWatchers, readLog, splitGlob, watcherTask } from './watchers'
 import type { Reading, Watcher } from './watchers'
 
 const EMPTY: Snapshot = { tasks: [], alive: {}, rates: {} }
@@ -78,6 +78,8 @@ let watcherCfg: { mtimeMs: number; watchers: Watcher[]; errors: string[] } = { m
 /** watcher id → cache of its last reading, keyed by the source's mtime/size */
 const readings = new Map<string, { key: string; reading: Reading | null }>()
 const firstSeen = new Map<string, number>()
+/** watcher id → the file a globbed path resolved to last time: a new file is a new run */
+const resolved = new Map<string, string>()
 let lastPidCheck = 0
 let lastCleanup = 0
 let demo: Timer | undefined
@@ -135,10 +137,20 @@ async function tail($: EngineInterface, path: string, size: number): Promise<str
   return r && r.exitCode === 0 ? r.stdout : null
 }
 
+/** The file a watcher reads: its path, or for `fetch*.log` the newest match in that folder. */
+async function resolvePath($: EngineInterface, w: Watcher): Promise<string | null> {
+  const path = expandHome(w.path, home)
+  const g = w.type === 'dircount' ? null : splitGlob(path)
+  if (!g) return path
+  const entries = await $.fs.list(g.dir).catch(() => [])
+  const name = newestMatch(entries, g.glob)
+  return name ? `${g.dir === '/' ? '' : g.dir}/${name}` : null
+}
+
 async function measure($: EngineInterface, w: Watcher, path: string): Promise<Reading | null> {
   const st = await $.fs.stat(path).catch(() => null)
   if (!st) return null
-  const key = `${st.mtimeMs}:${st.size}`
+  const key = `${path}:${st.mtimeMs}:${st.size}`
   const cached = readings.get(w.id)
   if (cached?.key === key) return cached.reading
   let reading: Reading | null = null
@@ -162,7 +174,10 @@ async function readWatchers($: EngineInterface, cfg: Config, now: number): Promi
   const live = new Set<string>()
   for (const w of await loadWatchers($, cfg)) {
     live.add(w.id)
-    const path = expandHome(w.path, home)
+    const path = await resolvePath($, w).catch(() => null)
+    if (!path) continue
+    if (resolved.has(w.id) && resolved.get(w.id) !== path) firstSeen.delete(w.id) // another file: a new run
+    resolved.set(w.id, path)
     const reading = await measure($, w, path).catch(() => null)
     if (!reading) continue
     if (now - reading.mtimeMs > w.activeWithin * 1000) {
@@ -174,6 +189,7 @@ async function readWatchers($: EngineInterface, cfg: Config, now: number): Promi
     if (task) tasks.push(task)
   }
   for (const id of [...readings.keys()]) if (!live.has(id)) readings.delete(id)
+  for (const id of [...resolved.keys()]) if (!live.has(id)) resolved.delete(id)
   return tasks
 }
 
