@@ -6,6 +6,10 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Fixed
+
+- The plugin directory's blocking check: `register.tsx` named `h` in a type (`ReturnType<typeof h>`); it is now `RenderNode`, and a guard test keeps `h` and `Fragment` out of every `.tsx` module.
+
 ## [0.2.1] - 2026-10-06
 
 ### Changed

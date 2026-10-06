@@ -6,7 +6,7 @@
  * Everything that can fail is caught: a broken file or an unreadable log costs
  * that one task, never the band and never the session.
  */
-import type { EngineInterface, PluginOptions, Register, Timer } from 'claude-code'
+import type { EngineInterface, PluginOptions, Register, RenderNode, Timer } from 'claude-code'
 
 import type { Celebration, Layout, Prefs, Snapshot, Task } from '../types'
 import { CELEBRATE_FPS, CELEBRATE_MS, encodeCells, frame, needs, planScene, seedOf } from './celebrate'
@@ -524,7 +524,7 @@ export const register: Register = (on, options) => {
     if (rows.length === 0 && !showing) return next(e)
 
     const { Box, Text } = $.ui.resolve(e)
-    let top: ReturnType<typeof h> | null = null
+    let top: RenderNode | null = null
     if (raster && e.surface === 'terminal') {
       const { Raster } = $.ui.resolve(e)
       top = (

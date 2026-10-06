@@ -15,7 +15,7 @@
 <h3>👉 <code>/plugin marketplace add pepperonas/taskline</code> · <code>/plugin install taskline@pepperonas-taskline</code></h3>
 
 [![version](https://img.shields.io/badge/version-0.2.1-7B4DFF?style=for-the-badge&logo=anthropic&logoColor=white)](CHANGELOG.md)
-[![node tests](https://img.shields.io/badge/node%20tests-95-2E9E5B?style=for-the-badge&logo=nodedotjs&logoColor=white)](tests)
+[![node tests](https://img.shields.io/badge/node%20tests-96-2E9E5B?style=for-the-badge&logo=nodedotjs&logoColor=white)](tests)
 [![engine tests](https://img.shields.io/badge/engine%20tests-27-2E9E5B?style=for-the-badge&logo=anthropic&logoColor=white)](hooks)
 [![python tests](https://img.shields.io/badge/python%20tests-30-2E9E5B?style=for-the-badge&logo=python&logoColor=white)](tests/test_taskline.py)
 

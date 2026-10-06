@@ -137,3 +137,10 @@ test('every program the mod runs is in the README privacy table, and nothing els
   assert.ok(run.length > 0)
   assert.deepEqual([...new Set(run)], listed)
 })
+
+test('no .tsx module names h or Fragment: the directory blocks it (JSX compiles to calls of h)', () => {
+  for (const f of files('hooks', /\.tsx$/)) {
+    const code = read(f).replace(/\/\*[\s\S]*?\*\/|\/\/.*$/gm, '')
+    assert.ok(!/\b(h|Fragment)\b(?!\s*\()/.test(code), `${f} uses h or Fragment as a name`)
+  }
+})
