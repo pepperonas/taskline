@@ -13,7 +13,7 @@
       "name": "taskline",
       "source": "./",
       "description": "Live progress of every long-running job above the Claude Code prompt: bars, speed, ETA, stall and crash detection",
-      "version": "0.2.0",
+      "version": "0.2.1",
       "author": { "name": "Martin Pfeffer", "url": "https://celox.io" },
       "homepage": "https://github.com/pepperonas/taskline",
       "license": "MIT",

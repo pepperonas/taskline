@@ -6,6 +6,8 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-10-06
+
 ### Changed
 
 - Plugin directory review: `$` is passed only to the mod's own top-level functions (state through `$.state.get`/`set` with literal keys instead of the imported `read`/`update` helpers), every call written as `$.noun.method(…)` on one line.
