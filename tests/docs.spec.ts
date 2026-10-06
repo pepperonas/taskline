@@ -129,3 +129,11 @@ test('no lockfile ships: Claude Code would install the dev tools for every user'
 test('the README footer carries the copyright line', () => {
   assert.ok(README.trimEnd().split('\n').slice(-5).join('\n').includes('© 2026 Martin Pfeffer | [celox.io](https://celox.io)'))
 })
+
+test('every program the mod runs is in the README privacy table, and nothing else is', () => {
+  const src = read('hooks/register.tsx')
+  const run = [...src.matchAll(/\$\.process\.run\(\[\s*'([a-z]+)'/g)].map(m => m[1]!).sort()
+  const listed = [...README.matchAll(/^\| `([a-z]+)` \| `\1 /gm)].map(m => m[1]!).sort()
+  assert.ok(run.length > 0)
+  assert.deepEqual([...new Set(run)], listed)
+})

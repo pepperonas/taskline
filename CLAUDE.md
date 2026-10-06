@@ -33,5 +33,6 @@ Data flow: jobs write `~/.claude/progress/<id>.json` (PROTOCOL.md, via `python/t
 - Every string from files or logs goes through `sanitize` (strips C0/C1 incl. ESC) and every row is clipped to `bodyColumns` — never let a file inject ANSI or wrap.
 - Mutate every new test once and record it in docs/MUTATIONS.md. Run a mutant against the suite that is supposed to catch it; the replacement must match exactly once.
 - No lockfile in the repo root (`.npmrc package-lock=false`): Claude Code would install the dev tools for every user.
+- Plugin directory rules (its validator blocks otherwise): pass `$` only as a whole argument to top-level functions of the same file (no `read($, …)`/`update($, …)` from `claude-code`); write every call as `$.noun.method(…)` on one line, every `on('event', …)` on its own line; `$.state` keys as literals. Every program the mod runs must be in the README privacy table (drift guard).
 - Never put `options` on a `userConfig` field (the plugin directory refuses it); list choices in the description.
 - Dev loading: symlink the repo into the session's `~/.claude/dev-mods/<session>/taskline` (hot reload), or `claude --plugin-dir .`. `install.sh` / `uninstall.sh` are for users (idempotent, record-based).

@@ -6,7 +6,6 @@
  * Everything that can fail is caught: a broken file or an unreadable log costs
  * that one task, never the band and never the session.
  */
-import { atom, read, update } from 'claude-code'
 import type { EngineInterface, PluginOptions, Register, Timer } from 'claude-code'
 
 import type { Celebration, Layout, Prefs, Snapshot, Task } from '../types'
@@ -23,9 +22,31 @@ import { TAIL_BYTES, countMatches, expandHome, newestMatch, parseWatchers, readL
 import type { Reading, Watcher } from './watchers'
 
 const EMPTY: Snapshot = { tasks: [], alive: {}, rates: {} }
-const snapshotA = atom({ plugin: 'taskline', key: 'snapshot' } as const, EMPTY)
-const prefsA = atom({ plugin: 'taskline', key: 'prefs' } as const, { layout: 'auto', hidden: false } as Prefs)
-const celebrationA = atom({ plugin: 'taskline', key: 'celebration' } as const, null as Celebration | null)
+const DEFAULT_PREFS: Prefs = { layout: 'auto', hidden: false }
+
+// --- what the band draws, in $.state (keys written out: the directory reads them) ------
+
+async function getSnapshot($: EngineInterface): Promise<Snapshot> {
+  const { value } = await $.state.get({ plugin: 'taskline', key: 'snapshot' })
+  return value ?? EMPTY
+}
+async function setSnapshot($: EngineInterface, value: Snapshot): Promise<void> {
+  await $.state.set({ plugin: 'taskline', key: 'snapshot' }, value)
+}
+async function getPrefs($: EngineInterface): Promise<Prefs> {
+  const { value } = await $.state.get({ plugin: 'taskline', key: 'prefs' })
+  return value ?? DEFAULT_PREFS
+}
+async function setPrefs($: EngineInterface, value: Prefs): Promise<void> {
+  await $.state.set({ plugin: 'taskline', key: 'prefs' }, value)
+}
+async function getCelebration($: EngineInterface): Promise<Celebration | null> {
+  const { value } = await $.state.get({ plugin: 'taskline', key: 'celebration' })
+  return value ?? null
+}
+async function setCelebration($: EngineInterface, value: Celebration | null): Promise<void> {
+  await $.state.set({ plugin: 'taskline', key: 'celebration' }, value)
+}
 /** The Raster the finish is drawn in; `$.ui.blit` repaints it by this key. */
 const RASTER_KEY = 'taskline-check'
 /** The finish's rows at most: the large show and a row of air for the sparks. */
@@ -108,13 +129,13 @@ function sceneFor(c: Celebration, cols: number, rows: number, color: boolean): S
 
 async function celebrate($: EngineInterface, cfg: Config, c: Celebration): Promise<void> {
   if (!cfg.celebrate) return
-  const current = await read($, celebrationA)
+  const current = await getCelebration($)
   const now = await $.clock.now()
   if (current && now - current.startedAt < CELEBRATE_MS) {
     if (queue.length < 3) queue.push(c)
     return
   }
-  await update($, celebrationA, () => ({ ...c, startedAt: now }))
+  await setCelebration($, { ...c, startedAt: now })
   $.ui.invalidate('ui.render')
   showTimer?.cancel()
   showTimer = $.clock.every(Math.round(1000 / CELEBRATE_FPS), () => void step($, cfg))
@@ -122,12 +143,12 @@ async function celebrate($: EngineInterface, cfg: Config, c: Celebration): Promi
 
 /** One frame of the finish: repaint the Raster in place; at the end, the next one or nothing. */
 async function step($: EngineInterface, cfg: Config): Promise<void> {
-  const c = await read($, celebrationA)
+  const c = await getCelebration($)
   const now = await $.clock.now()
   if (!c || now - c.startedAt >= CELEBRATE_MS) {
     showTimer?.cancel()
     showTimer = undefined
-    await update($, celebrationA, () => null)
+    await setCelebration($, null)
     $.ui.invalidate('ui.render')
     const nextUp = queue.shift()
     if (nextUp) await celebrate($, cfg, nextUp)
@@ -135,9 +156,8 @@ async function step($: EngineInterface, cfg: Config): Promise<void> {
   }
   const sc = mounted ? sceneFor(c, mounted.cols, mounted.rows, cfg.color && colorEnv) : null
   if (!mounted || !sc) return
-  await $.ui
-    .blit({ requestId: mounted.requestId, key: RASTER_KEY, cells: encodeCells(frame(sc, now - c.startedAt)) })
-    .catch(() => undefined)
+  const cells = encodeCells(frame(sc, now - c.startedAt))
+  await $.ui.blit({ requestId: mounted.requestId, key: RASTER_KEY, cells }).catch(() => undefined)
 }
 
 const dirOf = (cfg: Config) => expandHome(cfg.progressDir, home).replace(/\/+$/, '')
@@ -280,7 +300,7 @@ async function poll($: EngineInterface, cfg: Config): Promise<void> {
   polling = true
   try {
     const now = await $.clock.now()
-    const prev = await read($, snapshotA)
+    const prev = await getSnapshot($)
     const tasks = [...(await readFiles($, cfg)), ...(await readWatchers($, cfg, now))]
 
     let alive = prev.alive
@@ -300,7 +320,7 @@ async function poll($: EngineInterface, cfg: Config): Promise<void> {
       }
     }
 
-    if (JSON.stringify(next) !== JSON.stringify(prev)) await update($, snapshotA, () => next)
+    if (JSON.stringify(next) !== JSON.stringify(prev)) await setSnapshot($, next)
     const views = buildViews(next, now, cfg.timing)
     animated = isAnimated(views)
     // ages, countdowns and the display window of done tasks move with time alone
@@ -389,10 +409,10 @@ export const register: Register = (on, options) => {
     const noColor = await $.env.get('NO_COLOR').catch(() => undefined)
     colorEnv = !noColor
     const stored = (await $.store.get('prefs').catch(() => null)) as Partial<Prefs> | null
-    await update($, prefsA, () => ({
+    await setPrefs($, {
       layout: LAYOUTS.includes(stored?.layout as Layout) ? (stored!.layout as Layout) : cfg.layout,
       hidden: stored?.hidden === true,
-    }))
+    })
     await $.command.register({
       name: 'taskline',
       description: 'Progress of long-running jobs: list, clear, hide/show, layout, demo',
@@ -412,14 +432,14 @@ export const register: Register = (on, options) => {
 
   on('command.run', { command: 'taskline' }, async ($, e) => {
     const [cmd = '', arg = ''] = e.args.trim().split(/\s+/)
-    const prefs = await read($, prefsA)
+    const prefs = await getPrefs($)
     const save = async (p: Prefs) => {
-      await update($, prefsA, () => p)
+      await setPrefs($, p)
       await $.store.set('prefs', p)
       $.ui.invalidate('ui.render')
     }
     const now = await $.clock.now()
-    const snap = await read($, snapshotA)
+    const snap = await getSnapshot($)
 
     switch (cmd.toLowerCase()) {
       case '':
@@ -471,10 +491,10 @@ export const register: Register = (on, options) => {
 
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
     if (e.props.hasSurvey) return next(e)
-    const prefs = await read($, prefsA)
-    const snap = await read($, snapshotA)
+    const prefs = await getPrefs($)
+    const snap = await getSnapshot($)
     const now = await $.clock.now()
-    const cel = await read($, celebrationA)
+    const cel = await getCelebration($)
     const showing = cel && cfg.celebrate && !prefs.hidden && now - cel.startedAt < CELEBRATE_MS ? cel : null
     if (prefs.hidden || (snap.tasks.length === 0 && !showing)) return next(e)
 

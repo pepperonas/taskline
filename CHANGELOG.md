@@ -6,6 +6,11 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Changed
+
+- Plugin directory review: `$` is passed only to the mod's own top-level functions (state through `$.state.get`/`set` with literal keys instead of the imported `read`/`update` helpers), every call written as `$.noun.method(…)` on one line.
+- README: what the mod sends (nothing), the exact programs it runs and why, the files it reads and writes, the environment variables it reads, and which shipped scripts it never runs — held to the code by a new drift guard.
+
 ## [0.2.0] - 2026-10-06
 
 ### Added

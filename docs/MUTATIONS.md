@@ -37,6 +37,7 @@ A test that has never been seen red is not an assurance. Each guarded behaviour 
 | `hooks/celebrate.ts` | the burst ignores the bar's position | node | killed (after moving the test bar: at column 9 it matched the centred fallback) |
 | `hooks/celebrate.ts` | bytes swapped in the cell encoding | node | killed |
 | `hooks/celebrate.ts` | all letters at once | node | killed |
+| `hooks/register.tsx` | a program run that the README privacy table does not list | node (drift guard) | killed |
 | `hooks/register.tsx` | `celebrate: false` not checked when queuing | engine | survives — equivalent: the render path checks it again, nothing shows and nothing is repainted |
 
 Three survivors in the first round were real gaps: hiding expired tasks was only covered in the node suite (the engine test passed because cleanup removed the file anyway), and neither the mid-write fallback nor the survey rule had any test. All three got one.

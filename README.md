@@ -15,7 +15,7 @@
 <h3>👉 <code>/plugin marketplace add pepperonas/taskline</code> · <code>/plugin install taskline@pepperonas-taskline</code></h3>
 
 [![version](https://img.shields.io/badge/version-0.2.0-7B4DFF?style=for-the-badge&logo=anthropic&logoColor=white)](CHANGELOG.md)
-[![node tests](https://img.shields.io/badge/node%20tests-94-2E9E5B?style=for-the-badge&logo=nodedotjs&logoColor=white)](tests)
+[![node tests](https://img.shields.io/badge/node%20tests-95-2E9E5B?style=for-the-badge&logo=nodedotjs&logoColor=white)](tests)
 [![engine tests](https://img.shields.io/badge/engine%20tests-27-2E9E5B?style=for-the-badge&logo=anthropic&logoColor=white)](hooks)
 [![python tests](https://img.shields.io/badge/python%20tests-30-2E9E5B?style=for-the-badge&logo=python&logoColor=white)](tests/test_taskline.py)
 
@@ -263,7 +263,27 @@ If you change `progressDir`, point the helpers there too: `export TASKLINE_DIR=.
 
 ## 🔒 Privacy
 
-taskline reads only the progress directory, the watchers file and the paths you list in it, and runs only `kill -0`, `tail` and `rm` (the last only on its own progress files). No network, no telemetry, no data leaves your machine.
+taskline reads only the progress directory, the watchers file and the paths you list in it, and runs only `kill -0`, `tail` and `rm` (the last only on its own progress files). No network, no telemetry, no data leaves your machine. In detail:
+
+**What it sends, and where.** Nothing, to nowhere. The mod makes no network request of any kind. Its only output is the band it draws above the prompt; the finish repaints that band in place (`$.ui.blit`), which is drawing on your own screen, not sending.
+
+**Programs it runs, and why.** Three, always as a fixed program name with arguments, never through a shell:
+
+| Program | Exact call | Why |
+|---|---|---|
+| `kill` | `kill -0 <pid>` | checks whether a job's process still lives (signal 0 sends nothing, it only asks); a dead writer shows as *aborted*. Only for a `pid` a progress file names, at most every 5 s |
+| `tail` | `tail -c 65536 <log>` | reads the last 64 KB of a log a `logtail` watcher points at, when the log is larger than 256 KB (smaller logs are read directly) |
+| `rm` | `rm -f -- <files>` | deletes progress files of finished tasks once they are no longer shown — only files named `<id>.json` directly inside the progress directory, never anything else (`cleanup: false` turns it off) |
+
+**Files it reads.** The progress directory (`progressDir`, default `~/.claude/progress`), the watchers file (`watchersFile`, default `~/.claude/taskline/watchers.json`) and the files and folders you list in that watchers file. Nothing else.
+
+**Files it writes.** Only `/taskline demo` writes: three demo progress files (`demo-download.json`, `demo-scan.json`, `demo-stuck.json`) into the progress directory, so the demo runs through the real reading path. The mod never edits a build, start-up, settings or instructions file; your preferences (`/taskline hide`, `layout`) live in Claude Code's own plugin store.
+
+**Values it reads from your machine.** Two environment variables: `HOME`, to expand the `~` in the two paths above (they are `/config` options — set them to absolute paths and `HOME` is not needed for anything else), and `NO_COLOR`, the [no-color.org](https://no-color.org) convention for turning colour off (the `color` option does the same).
+
+**Files in this repository that the mod does not run.** `install.sh`, `uninstall.sh`, `demo.py`, `bin/taskline` and `python/taskline.py` are readable scripts for *you*: the installer, a demo, and the helper your own jobs import to report progress. The mod never executes any of them.
+
+**Not related to `tasklite`.** taskline is an independent mod by Martin Pfeffer (celox.io): progress bars for long-running jobs. It shares nothing with the `tasklite` task manager but four letters.
 
 ## 🏛️ Architecture
 
