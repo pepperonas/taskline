@@ -69,13 +69,19 @@ function world(on: any, env: Record<string, string> = {}) {
     return { value: { exitCode: 127, stdout: '', stderr: 'not faked' } }
   })
   on('command.register', () => ({ value: undefined }))
+  // what the finish repaints: every blit, answered as the terminal would
+  const blits: any[] = []
+  on('ui.blit', (_$: any, e: any) => {
+    blits.push(e)
+    return { value: {} }
+  })
   on('session.start', (_$: any, e: any) => ({ cwd: e.cwd }))
   // the engine's own band beneath: an empty one marked so we can see it is kept
   on('ui.render', ($: any, e: any) => {
     const { Text } = $.ui.resolve(e)
     return <Text key="engine">engine-band</Text>
   })
-  return { clock, files, write, task, dead, removed }
+  return { clock, files, write, task, dead, removed, blits }
 }
 
 const start = ($: any) => $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
@@ -86,6 +92,16 @@ const shown = async (ui: any) => (await ui.findAll({ type: 'Text' })).map((t: an
 const run = ($: any, args: string) => $.command.run({ command: 'taskline', args } as never) as Promise<{ text: string }>
 /** one poll: the timer polls once a second */
 const tick = (clock: any) => clock.advance(1000)
+const rasters = async (ui: any) => ui.findAll({ type: 'Raster' })
+
+/** A task that runs, then finishes while the band watches. */
+async function finishOne($: any, w: any) {
+  w.task('bridge', { label: 'Bridge', icon: '⬇', done: 19, total: 20, unit: 'songs' })
+  await start($)
+  await tick(w.clock)
+  w.task('bridge', { label: 'Bridge', icon: '⬇', done: 20, total: 20, unit: 'songs', status: 'done' })
+  await tick(w.clock)
+}
 
 for (const surface of ['terminal', 'desktop'] as const) {
   test(`nothing to show: only the engine's band (${surface})`, async ($, on) => {
@@ -297,27 +313,10 @@ test('with cleanup off, a finished task still hides after doneVisible and its fi
   expect(w.files.has(`${DIR}/dl.json`)).toBe(true)
 })
 
-/** A task that runs, then finishes while the band watches. */
-async function finishOne($: any, w: any) {
-  w.task('bridge', { label: 'Bridge', icon: '⬇', done: 19, total: 20, unit: 'songs' })
-  await start($)
-  await tick(w.clock)
-  w.task('bridge', { label: 'Bridge', icon: '⬇', done: 20, total: 20, unit: 'songs', status: 'done' })
-  await tick(w.clock)
-}
-const blits = (on: any) => {
-  const seen: any[] = []
-  on('ui.blit', (_$: any, e: any) => {
-    seen.push(e)
-    return { value: {} }
-  })
-  return seen
-}
-const rasters = async (ui: any) => ui.findAll({ type: 'Raster' })
 
 test('a bar that fills bursts: a Raster above the band, repainted frame by frame, gone after the show', async ($, on) => {
   const w = world(on)
-  const seen = blits(on)
+  const seen = w.blits
   await finishOne($, w)
   const ui = await mount($, 'terminal', 140, 20)
   const [r] = await rasters(ui)
@@ -340,7 +339,7 @@ test('a bar that fills bursts: a Raster above the band, repainted frame by frame
 
 test('the desktop app gets the finish as one line', async ($, on) => {
   const w = world(on)
-  const seen = blits(on)
+  const seen = w.blits
   await finishOne($, w)
   const ui = await mount($, 'desktop', 140, 20)
   expect(await rasters(ui)).toHaveLength(0)
@@ -351,7 +350,6 @@ test('the desktop app gets the finish as one line', async ($, on) => {
 
 test('no room for the show: one line instead, the task row kept', async ($, on) => {
   const w = world(on)
-  blits(on)
   await finishOne($, w)
   const ui = await mount($, 'terminal', 40, 20)
   expect(await rasters(ui)).toHaveLength(0)
@@ -362,7 +360,7 @@ test('no room for the show: one line instead, the task row kept', async ($, on) 
 
 test('a task already done when taskline starts does not celebrate', async ($, on) => {
   const w = world(on)
-  const seen = blits(on)
+  const seen = w.blits
   w.task('bridge', { label: 'Bridge', done: 20, total: 20, unit: 'songs', status: 'done' })
   await start($)
   await tick(w.clock)
@@ -375,7 +373,7 @@ test('a task already done when taskline starts does not celebrate', async ($, on
 
 test('celebrate off: a finished task is just green', { options: { celebrate: false } }, async ($, on) => {
   const w = world(on)
-  const seen = blits(on)
+  const seen = w.blits
   await finishOne($, w)
   const ui = await mount($, 'terminal', 140, 20)
   expect(await rasters(ui)).toHaveLength(0)
@@ -386,7 +384,6 @@ test('celebrate off: a finished task is just green', { options: { celebrate: fal
 
 test('/taskline check plays the finish with no task at all', async ($, on) => {
   const w = world(on)
-  blits(on)
   await start($)
   await tick(w.clock)
   expect((await run($, 'check')).text).toBe('CHECK!!')
@@ -398,7 +395,6 @@ test('/taskline check plays the finish with no task at all', async ($, on) => {
 
 test('a tight band: the show shrinks so the task row still fits', async ($, on) => {
   const w = world(on)
-  blits(on)
   await finishOne($, w)
   const maxRows = 14 // the band may use 13 rows: the large show needs 13 with its air, so it gives one up
   const ui = await mount($, 'terminal', 140, maxRows)
@@ -411,7 +407,6 @@ test('a tight band: the show shrinks so the task row still fits', async ($, on) 
 
 test('two finishes at once: the second plays after the first', async ($, on) => {
   const w = world(on)
-  blits(on)
   w.task('a', { label: 'A', done: 1, total: 2 })
   w.task('b', { label: 'B', done: 1, total: 2 })
   await start($)

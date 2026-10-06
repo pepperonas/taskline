@@ -274,10 +274,8 @@ async function checkPids($: EngineInterface, pids: number[], prev: Record<string
   const alive: Record<string, boolean> = {}
   for (const pid of pids) {
     if (!canRun) break
-    const r = await $.process.run(['kill', '-0', String(pid)], { timeoutMs: 2000 }).catch(() => {
-      canRun = false // no host processes on this surface: liveness stays unknown
-      return null
-    })
+    const r = await $.process.run(['kill', '-0', String(pid)], { timeoutMs: 2000 }).catch(() => null)
+    if (r === null) canRun = false // no host processes on this surface: liveness stays unknown
     if (r) alive[String(pid)] = r.exitCode === 0 || /not permitted/i.test(r.stderr)
     else if (prev[String(pid)] !== undefined) alive[String(pid)] = prev[String(pid)]!
   }
