@@ -168,6 +168,10 @@ async function main() {
     console.log(`docs/${name}.png`)
   }
   await gif(browser)
+  const icon = await browser.newPage({ viewport: { width: 1024, height: 1024 }, deviceScaleFactor: 1 })
+  await icon.goto(`file://${join(DOCS, 'icon.svg')}`)
+  await icon.screenshot({ path: join(ROOT, '.claude-plugin', 'icon.png') })
+  console.log('.claude-plugin/icon.png')
   const card = await browser.newPage({ viewport: { width: 1280, height: 640 }, deviceScaleFactor: 1 })
   const file = join(TMP, 'social.html')
   writeFileSync(file, SOCIAL)

@@ -38,7 +38,7 @@ __all__ = [
     "progress_dir",
     "PROTOCOL_VERSION",
 ]
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
 PROTOCOL_VERSION = 1
 ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$")

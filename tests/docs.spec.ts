@@ -65,10 +65,10 @@ test('the tested Claude Code version is the one the engine types were written by
 })
 
 test('every /config field is in the configuration table with its default', () => {
-  for (const [key, field] of Object.entries(manifest.userConfig as Record<string, { default: unknown }>)) {
-    const row = README.split('\n').find(l => l.startsWith(`| \`${key}\` |`))
-    assert.ok(row, `README configuration table misses ${key}`)
-    assert.ok(row!.includes(`\`${String(field.default)}\``), `${key}: README default should be ${field.default}`)
+  for (const [opt, field] of Object.entries(manifest.userConfig as Record<string, { default: unknown }>)) {
+    const row = README.split('\n').find(l => l.startsWith(`| \`${opt}\` |`))
+    assert.ok(row, `README configuration table misses ${opt}`)
+    assert.ok(row!.includes(`\`${String(field.default)}\``), `${opt}: README default should be ${field.default}`)
   }
 })
 

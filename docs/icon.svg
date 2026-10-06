@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <!-- taskline listing icon: a running bar and a finished one with its check.
+       Rendered to the plugin's 1024 px listing icon by `npm run screenshots`. -->
+  <rect width="1024" height="1024" fill="#0d1117"/>
+  <g>
+    <rect x="132" y="318" width="760" height="128" rx="64" fill="#30363d"/>
+    <rect x="132" y="318" width="470" height="128" rx="64" fill="#79c0ff"/>
+  </g>
+  <g>
+    <rect x="132" y="578" width="560" height="128" rx="64" fill="#3fb950"/>
+    <path d="M748 646 L800 698 L896 586" fill="none" stroke="#7ee787" stroke-width="40" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+</svg>

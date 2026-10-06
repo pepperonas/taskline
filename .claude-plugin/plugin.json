@@ -1,6 +1,6 @@
 {
   "name": "taskline",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Live progress of every long-running job above the Claude Code prompt: bars, speed, ETA, stall and crash detection. Jobs report via a one-file JSON protocol (Python helper and CLI included) or are watched from their files and logs.",
   "types": "./types/index.d.ts",
   "userConfig": {

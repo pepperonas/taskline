@@ -14,7 +14,7 @@
 
 <h3>👉 <code>/plugin marketplace add pepperonas/taskline</code> · <code>/plugin install taskline@pepperonas-taskline</code></h3>
 
-[![version](https://img.shields.io/badge/version-0.1.0-7B4DFF?style=for-the-badge&logo=anthropic&logoColor=white)](CHANGELOG.md)
+[![version](https://img.shields.io/badge/version-0.2.0-7B4DFF?style=for-the-badge&logo=anthropic&logoColor=white)](CHANGELOG.md)
 [![node tests](https://img.shields.io/badge/node%20tests-94-2E9E5B?style=for-the-badge&logo=nodedotjs&logoColor=white)](tests)
 [![engine tests](https://img.shields.io/badge/engine%20tests-27-2E9E5B?style=for-the-badge&logo=anthropic&logoColor=white)](hooks)
 [![python tests](https://img.shields.io/badge/python%20tests-30-2E9E5B?style=for-the-badge&logo=python&logoColor=white)](tests/test_taskline.py)
@@ -327,6 +327,7 @@ npm run screenshots      # re-render docs/*.png and the social card (uses your C
 
 The full history is in [CHANGELOG.md](CHANGELOG.md) ([Keep a Changelog](https://keepachangelog.com/en/1.1.0/)).
 
+- **0.2.0** — the finish (a filled bar bursts, CHECK!!), globbed watcher paths that follow a new run's log, `stalled_after` per task, a listing icon for the plugin directory.
 - **0.1.0** — first release: the band, protocol v1, Python helper and CLI, watchers, `/taskline`.
 
 ## 🤝 Contributing

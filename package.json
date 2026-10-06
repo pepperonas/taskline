@@ -1,6 +1,6 @@
 {
   "name": "taskline",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "description": "Claude Code mod: live progress of long-running jobs above the prompt",
   "type": "module",
