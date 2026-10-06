@@ -8,6 +8,7 @@ All notable changes to this project are documented here. The format follows
 
 ### Added
 
+- The finish: when a running bar fills, it bursts into sparks and a green check with **CHECK!!** plays above the band — a truecolor `Raster` repainted at 30 fps (`$.ui.blit`), compact in narrower bands, one line on the desktop app or with animation off. Setting `celebrate`, command `/taskline check`, README GIF and filmstrip rendered from the real frames.
 - A glob in the file name of a `filesize` or `logtail` path (`~/w/fetch*.log`) follows the most recently modified match; a new file counts as a new run.
 - `stalled_after` per task (protocol, watchers, Python `Progress`, CLI `--stalled-after`): jobs that report once per batch no longer read as stalled between batches.
 - Social card (`docs/social.png`, 1280×640) at the top of the README, rendered by `npm run screenshots`.

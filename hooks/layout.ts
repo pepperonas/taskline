@@ -154,6 +154,13 @@ export function taskSegs(v: TaskView, lv: Level, nowMs: number, color: boolean):
   return segs
 }
 
+/** The columns the bar of a task takes in its own row at the richest level, [from, to). */
+export function barColumns(t: Task): [number, number] {
+  const lv = LEVELS[0]!
+  const from = rowWidth(head(t, lv, () => undefined)) + 1
+  return [from, from + lv.bar]
+}
+
 /** The richest level of one task that fits `width`, or the leanest one cut to fit. */
 export function fitTask(v: TaskView, width: number, nowMs: number, color: boolean): { segs: Seg[]; level: number } {
   for (let i = 0; i < LEVELS.length; i++) {

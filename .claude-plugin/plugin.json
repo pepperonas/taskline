@@ -46,6 +46,12 @@
       "description": "Spinner and smooth ETA countdown at 4 fps; off = one redraw per second",
       "default": true
     },
+    "celebrate": {
+      "type": "boolean",
+      "title": "Celebrate",
+      "description": "When a bar fills, it bursts into sparks and a green check with CHECK!! plays above the band (about 3 s; one line instead on the desktop app or with animation off)",
+      "default": true
+    },
     "cleanup": {
       "type": "boolean",
       "title": "Clean up",

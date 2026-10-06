@@ -41,3 +41,9 @@ export function expiredFiles(s: Snapshot, now: number, timing: Timing): Task[] {
 export function isAnimated(views: readonly TaskView[]): boolean {
   return views.some(v => v.phase === 'running' || v.phase === 'stalled')
 }
+
+/** Tasks that were running a moment ago and are done now: each gets its finish. */
+export function finished(prev: readonly Task[], next: readonly Task[]): Task[] {
+  const was = new Map(prev.map(t => [t.id, t.status]))
+  return next.filter(t => t.status === 'done' && was.get(t.id) === 'running')
+}

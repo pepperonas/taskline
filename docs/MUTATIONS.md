@@ -26,5 +26,17 @@ A test that has never been seen red is not an assurance. Each guarded behaviour 
 | `hooks/watchers.ts` | `splitGlob` accepts a glob in the folder | node | killed (after fixing the test, whose path had no glob in the file name) |
 | `hooks/register.tsx` | globbed paths not resolved | engine | killed |
 | `hooks/register.tsx` | a new file keeps the old run's start | engine | killed |
+| `hooks/views.ts` | every done task celebrates, not only one seen running | node, engine | killed |
+| `hooks/register.tsx` | the finish never repaints | engine | killed |
+| `hooks/register.tsx` | the finish never ends | engine | killed (after adding the queue test: the band hid it by time, but the next finish never started) |
+| `hooks/register.tsx` | a Raster on the desktop surface | engine | killed (after asserting no blits there) |
+| `hooks/register.tsx` | the finish takes the task row's row | engine | killed (after adding the tight-band test) |
+| `hooks/register.tsx` | blits sent to the wrong band | engine | killed (after the mount got a known requestId) |
+| `hooks/celebrate.ts` | no dissolve | node | killed (after counting the word alone: sparks fade anyway) |
+| `hooks/celebrate.ts` | dark pixels painted black instead of see-through | node | killed |
+| `hooks/celebrate.ts` | the burst ignores the bar's position | node | killed (after moving the test bar: at column 9 it matched the centred fallback) |
+| `hooks/celebrate.ts` | bytes swapped in the cell encoding | node | killed |
+| `hooks/celebrate.ts` | all letters at once | node | killed |
+| `hooks/register.tsx` | `celebrate: false` not checked when queuing | engine | survives — equivalent: the render path checks it again, nothing shows and nothing is repainted |
 
 Three survivors in the first round were real gaps: hiding expired tasks was only covered in the node suite (the engine test passed because cleanup removed the file anyway), and neither the mid-write fallback nor the survey rule had any test. All three got one.

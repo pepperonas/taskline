@@ -15,8 +15,8 @@
 <h3>👉 <code>/plugin marketplace add pepperonas/taskline</code> · <code>/plugin install taskline@pepperonas-taskline</code></h3>
 
 [![version](https://img.shields.io/badge/version-0.1.0-7B4DFF?style=for-the-badge&logo=anthropic&logoColor=white)](CHANGELOG.md)
-[![node tests](https://img.shields.io/badge/node%20tests-81-2E9E5B?style=for-the-badge&logo=nodedotjs&logoColor=white)](tests)
-[![engine tests](https://img.shields.io/badge/engine%20tests-19-2E9E5B?style=for-the-badge&logo=anthropic&logoColor=white)](hooks)
+[![node tests](https://img.shields.io/badge/node%20tests-94-2E9E5B?style=for-the-badge&logo=nodedotjs&logoColor=white)](tests)
+[![engine tests](https://img.shields.io/badge/engine%20tests-27-2E9E5B?style=for-the-badge&logo=anthropic&logoColor=white)](hooks)
 [![python tests](https://img.shields.io/badge/python%20tests-30-2E9E5B?style=for-the-badge&logo=python&logoColor=white)](tests/test_taskline.py)
 
 [![CI](https://img.shields.io/github/actions/workflow/status/pepperonas/taskline/ci.yml?branch=main&label=CI&logo=github)](https://github.com/pepperonas/taskline/actions/workflows/ci.yml)
@@ -52,6 +52,12 @@
 
 <img src="docs/states.png" alt="taskline states: running, byte unit, unknown total, stalled, aborted, error, done" width="100%">
 
+**When a bar fills** — it bursts into sparks out of the bar's own position, a shock ring runs out, a check mark draws itself with a pen of light, **CHECK!!** drops in letter by letter, a light sweeps across, and it all dissolves (≈ 3 s, 30 fps, every frame below is the mod's own output):
+
+<img src="docs/celebrate.gif" alt="the finish: the bar bursts into sparks, a check mark draws itself, CHECK!! drops in and dissolves" width="100%">
+
+<img src="docs/celebrate.png" alt="four moments of the finish: the burst, sparks and shock ring, the check drawing itself, CHECK!! with a light sweep" width="100%">
+
 **Width-aware** — the same three jobs at 140, 100, 72 and 44 columns. One line while everything fits richly; otherwise one row per job, each shrinking its bar first, then its extras, then its label. Nothing ever wraps:
 
 <img src="docs/widths.png" alt="the same three jobs at four terminal widths" width="100%">
@@ -68,6 +74,7 @@ All images, the social card included, are rendered by [`tools/screenshots.ts`](t
 - **Crash detection** — a job that names its `pid` and dies without saying so shows `✖ aborted`, in red.
 - **Errors stick** — a failed job stays red with its message until you clear it (or an hour passes).
 - **Done fades** — green `✔` with the elapsed time for ten seconds, then the file is cleaned up.
+- **A finish worth watching** — when a running bar fills, it explodes into sparks and a big green check with **CHECK!!** plays above the band: a truecolor pixel canvas (two pixels per cell), repainted in place at 30 fps, see-through where nothing glows. Compact below 107 columns, one `✔ CHECK!!` line when even that does not fit, on the desktop app, or with animation off. `/taskline check` plays it on demand.
 - **Width-aware, never wraps** — shorter bar → fewer extras → shorter label → `+N more`.
 - **Watchers for jobs that report nothing** — a file growing to a known size, the last `[275/1000]` in a log, files piling up in a folder.
 - **A one-file protocol** — any language can report: write JSON, rename. A Python helper and a `taskline` CLI do it for you.
@@ -206,6 +213,7 @@ The file is re-read when it changes; mistakes are listed by `/taskline` and neve
 | `/taskline hide` · `/taskline show` | hide or show the band (remembered) |
 | `/taskline layout auto\|single\|stacked` | override the layout (remembered) |
 | `/taskline demo` | three fake jobs for 35 s, written as real progress files |
+| `/taskline check` | play the finish: the bar bursts, CHECK!! |
 
 For a longer live check with the real Python library: `python3 demo.py` (`--fast`, `--fail`).
 
@@ -222,6 +230,7 @@ In Claude Code: `/plugin configure taskline@pepperonas-taskline` (or `/config`).
 | `errorVisible` | seconds | `3600` | how long a failed or aborted task stays |
 | `color` | `true` · `false` | `true` | colors (also off when `NO_COLOR` is set) |
 | `animation` | `true` · `false` | `true` | spinner and countdown at 4 fps; off = once a second |
+| `celebrate` | `true` · `false` | `true` | the finish when a bar fills (sparks, check, CHECK!!) |
 | `cleanup` | `true` · `false` | `true` | delete files of finished tasks once they are hidden |
 | `progressDir` | path | `~/.claude/progress` | where jobs write |
 | `watchersFile` | path | `~/.claude/taskline/watchers.json` | the watchers |
@@ -263,6 +272,7 @@ taskline reads only the progress directory, the watchers file and the paths you 
 | [`hooks/state.ts`](hooks/state.ts) | phases (running · stalled · aborted · done · error), visibility, order |
 | [`hooks/eta.ts`](hooks/eta.ts) | EMA speed and ETA |
 | [`hooks/layout.ts`](hooks/layout.ts) | detail levels, width fitting, rows |
+| [`hooks/celebrate.ts`](hooks/celebrate.ts) | the finish: particles, shock ring, check, CHECK!! font, dissolve — every frame a function of time |
 | [`hooks/format.ts`](hooks/format.ts) | sizes, counts, durations, bars, cell widths |
 | [`hooks/watchers.ts`](hooks/watchers.ts) | watcher config, globs, log matching |
 | [`hooks/views.ts`](hooks/views.ts) | snapshot → what to draw, what to clean up |
@@ -278,8 +288,8 @@ Everything but `register.tsx` is pure and tested without Claude Code.
 
 Three suites:
 
-- **Node suite** — `tests/*.spec.ts`, plain `node:test`: formatting, protocol parsing (broken files, injection attempts), the EMA (uneven sample spacing, counter resets), phases and order, every layout at every width from 1 to 120 columns, watchers, and **drift guards** that hold this README to the code (versions, test counts, config fields, commands, protocol fields).
-- **Engine suite** — `hooks/*.test.tsx`, run by `claude plugin test .` against Claude Code's own engine with a faked file system, clock and processes: the band on terminal *and* desktop, stall and recovery, a dead pid, done → hidden → cleaned up, errors and `/taskline clear`, a file caught mid-write, a broken file next to a good one, a logtail watcher, a globbed log path switching to a new run, `NO_COLOR`, a narrow band, the survey yielding, every command.
+- **Node suite** — `tests/*.spec.ts`, plain `node:test`: formatting, protocol parsing (broken files, injection attempts), the EMA (uneven sample spacing, counter resets), phases and order, every layout at every width from 1 to 120 columns, watchers, the finish (every frame valid at every size, starts at the bar, word letter by letter, dissolves to nothing, see-through, monochrome), and **drift guards** that hold this README to the code (versions, test counts, config fields, commands, protocol fields).
+- **Engine suite** — `hooks/*.test.tsx`, run by `claude plugin test .` against Claude Code's own engine with a faked file system, clock and processes: the band on terminal *and* desktop, stall and recovery, a dead pid, done → hidden → cleaned up, errors and `/taskline clear`, a file caught mid-write, a broken file next to a good one, a logtail watcher, a globbed log path switching to a new run, the finish (Raster above the band, repainted at 30 fps, gone after the show; one line on the desktop or in a tight band; queued when two jobs finish at once; never for a job that was already done), `NO_COLOR`, a narrow band, the survey yielding, every command.
 - **Python suite** — `tests/test_taskline.py` with pytest: atomic writes, throttling, the context manager's done/error/interrupted, the CLI.
 
 **Every new test is mutated once.** A test never seen red is not an assurance, so each guarded behaviour gets its bug put back and the suite must go red — see [docs/MUTATIONS.md](docs/MUTATIONS.md).
@@ -302,6 +312,12 @@ npm run screenshots      # re-render docs/*.png and the social card (uses your C
 **A job crashed but shows "stalled", not "aborted".** It did not report a `pid` (the CLI needs `--pid $$`), or host processes are unavailable on this surface.
 
 **Can two Claude Code sessions show the same jobs?** Yes — they read the same directory. Whichever cleans up first removes a finished file; the other simply stops seeing it.
+
+**I updated taskline, but another session still shows the old one.** A running session reads the plugin once, at start. Type `/reload-plugins` there (or resume it with `claude --continue`); `/taskline check` shows at once whether the new version is in.
+
+**A logtail watcher shows nothing although the job runs.** It only shows what the log says: a job that logs once per batch has no matching line until its first batch ends. Report from the job itself (see [docs/INTEGRATIONS.md](docs/INTEGRATIONS.md)) to get a bar per item.
+
+**Every run writes a new log (`fetch3.log`, `fetch4.log` …).** Put a glob in the file name — `"path": "~/work/fetch*.log"` — and the watcher follows the newest one.
 
 **Why decimal units (GB = 10⁹)?** That is what Finder and most download tools show; your 3.1 GB looks like 3.1 GB everywhere.
 

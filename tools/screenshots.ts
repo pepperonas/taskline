@@ -2,15 +2,18 @@
  * Renders the README images from the mod's own layout code (hooks/layout.ts),
  * so every picture shows exactly what the band draws — no mock-ups.
  *
- *   npm run screenshots        # docs/hero.png, docs/states.png, docs/widths.png, docs/social.png
+ *   npm run screenshots        # docs/hero.png, states, widths, celebrate (+ .gif with ffmpeg), social
  *
  * Uses Playwright with the installed Google Chrome (or Playwright's Chromium).
  */
+import { execFileSync } from 'node:child_process'
 import { mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { chromium } from 'playwright'
 
-import { layoutRows } from '../hooks/layout.ts'
+import { CELEBRATE_MS, DEFAULT_COLOR, frame as celebration, needs, planScene } from '../hooks/celebrate.ts'
+import type { Scene } from '../hooks/celebrate.ts'
+import { PALETTE, barColumns, layoutRows } from '../hooks/layout.ts'
 import type { Row, Seg, TaskView } from '../hooks/layout.ts'
 import type { Task } from '../types/index.d.ts'
 
@@ -63,11 +66,49 @@ body{background:transparent;font-family:"SF Mono",Menlo,"JetBrains Mono",monospa
 .cap:first-child{padding-top:0}
 .grid{display:grid;grid-template-columns:auto 1fr;column-gap:24px;align-items:center}
 .grid .cap{padding:0}
+.cells{display:flex}.cells i{display:block;width:1ch;height:1.55em;flex:none}
 `
 
 const frame = (title: string, body: string, cols: number) => `<!doctype html><meta charset="utf-8"><style>${CSS}</style>
 <div class="term" style="width:calc(${cols}ch + 46px)"><div class="bar"><span class="dot" style="background:#ff5f57"></span><span class="dot" style="background:#febc2e"></span><span class="dot" style="background:#28c840"></span><span class="title">${esc(title)}</span></div>
 <div class="body">${body}</div></div>`
+
+// --- the finish: the Raster's own cells, each drawn as two exact half-cell pixels ------------
+
+const FINISHED = view(
+  { id: 'bridge', label: 'Bridge', icon: '⬇', done: 20, total: 20, unit: 'songs', status: 'done', startedAt: NOW - 192_000, updatedAt: NOW },
+  { phase: 'done' },
+)
+const CEL_COLS = 120
+const CEL_SCENE: Scene = planScene({ cols: CEL_COLS, rows: needs(2).rows + 1, seed: 20261006, color: true, accent: PALETTE.accent, bar: barColumns(FINISHED.task) })!
+const css = (c: number) => (c === DEFAULT_COLOR ? 'transparent' : `#${c.toString(16).padStart(6, '0')}`)
+function raster(s: Scene, t: number): string {
+  const f = celebration(s, t)
+  let html = ''
+  for (let r = 0; r < s.rows; r++) {
+    html += '<div class="row cells">'
+    for (let c = 0; c < s.cols; c++) {
+      const o = (r * s.cols + c) * 3
+      const ch = f[o]!
+      const fg = css(f[o + 1]!)
+      const fill = fg === 'transparent' ? '#e6edf3' : fg
+      const top = ch === 0x2580 || ch === 0x2588 ? fill : 'transparent'
+      const bot = ch === 0x2584 || ch === 0x2588 ? fill : ch === 0x2580 ? css(f[o + 2]!) : 'transparent'
+      html += ch === 0x20 ? '<i></i>' : `<i style="background:linear-gradient(${top} 0 50%,${bot} 50% 100%)"></i>`
+    }
+    html += '</div>'
+  }
+  return html
+}
+const finishBody = (t: number) => `<div class="row"><span class="acc">⏺</span> Downloading and importing the 20 songs</div>
+${raster(CEL_SCENE, t)}${rows([FINISHED], CEL_COLS)}
+<div class="box">&gt; <span class="dim"> </span></div>`
+const CEL_MOMENTS: [number, string][] = [
+  [140, 'the bar bursts'],
+  [330, 'sparks and a shock ring'],
+  [720, 'the check draws itself'],
+  [1480, 'CHECK!! — a light sweeps across'],
+]
 
 const PAGES: Record<string, string> = {
   hero: frame(
@@ -81,6 +122,11 @@ ${rows([TILES, BRIDGE, INDEX], 132)}
     132,
   ),
   states: frame('taskline — every state', STATES.map(([cap, v]) => `<div class="grid"><div class="cap" style="width:24ch">${cap}</div>${rows([v], 92, 'stacked')}</div>`).join(''), 120),
+  celebrate: frame(
+    'taskline — when a bar fills',
+    CEL_MOMENTS.map(([t, cap]) => `<div class="cap">${t} ms · ${cap}</div>${raster(CEL_SCENE, t)}${rows([FINISHED], CEL_COLS)}`).join(''),
+    CEL_COLS,
+  ),
   widths: frame(
     'taskline — the same three jobs at four widths',
     [140, 100, 72, 44].map(w => `<div class="cap">${w} columns</div><div style="width:${w}ch;border-right:1px dashed #30363d">${rows([TILES, BRIDGE, INDEX], w)}</div>`).join(''),
@@ -121,6 +167,7 @@ async function main() {
     await page.locator('body').screenshot({ path: join(DOCS, `${name}.png`), omitBackground: true })
     console.log(`docs/${name}.png`)
   }
+  await gif(browser)
   const card = await browser.newPage({ viewport: { width: 1280, height: 640 }, deviceScaleFactor: 1 })
   const file = join(TMP, 'social.html')
   writeFileSync(file, SOCIAL)
@@ -129,6 +176,31 @@ async function main() {
   console.log('docs/social.png')
   await browser.close()
   rmSync(TMP, { recursive: true, force: true })
+}
+
+/** docs/celebrate.gif: every frame of the finish at 30 fps, if ffmpeg is there. */
+async function gif(browser: Awaited<ReturnType<typeof chromium.launch>>) {
+  try {
+    execFileSync('ffmpeg', ['-version'], { stdio: 'ignore' })
+  } catch {
+    console.log('docs/celebrate.gif skipped (no ffmpeg)')
+    return
+  }
+  const page = await browser.newPage({ deviceScaleFactor: 1 })
+  const dir = join(TMP, 'gif')
+  mkdirSync(dir, { recursive: true })
+  const times: number[] = []
+  for (let t = -400; t <= CELEBRATE_MS + 500; t += 1000 / 30) times.push(Math.round(t))
+  for (const [i, t] of times.entries()) {
+    const file = join(dir, 'f.html')
+    writeFileSync(file, frame('claude — ~/claude/beat-byte', t < 0 ? `<div class="row"><span class="acc">⏺</span> Downloading and importing the 20 songs</div>${'<div class="row"> </div>'.repeat(CEL_SCENE.rows)}${rows([{ ...FINISHED, task: { ...FINISHED.task, done: 19, status: 'running' }, phase: 'running', speed: 0.1, bytesSpeed: 9.6e6, eta: 8 }], CEL_COLS)}<div class="box">&gt; <span class="dim"> </span></div>` : finishBody(t), CEL_COLS))
+    await page.goto(`file://${file}`)
+    await page.locator('.term').screenshot({ path: join(dir, `f${String(i).padStart(3, '0')}.png`) })
+  }
+  const out = join(DOCS, 'celebrate.gif')
+  execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-framerate', '30', '-i', join(dir, 'f%03d.png'),
+    '-vf', 'split[a][b];[a]palettegen=max_colors=192:stats_mode=full[p];[b][p]paletteuse=dither=sierra2_4a', '-loop', '0', out])
+  console.log('docs/celebrate.gif')
 }
 
 void main()

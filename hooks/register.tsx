@@ -9,20 +9,27 @@
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface, PluginOptions, Register, Timer } from 'claude-code'
 
-import type { Layout, Prefs, Snapshot, Task } from '../types'
+import type { Celebration, Layout, Prefs, Snapshot, Task } from '../types'
+import { CELEBRATE_FPS, CELEBRATE_MS, encodeCells, frame, needs, planScene, seedOf } from './celebrate'
+import type { Scene } from './celebrate'
 import { advanceAll } from './eta'
-import { layoutRows } from './layout'
+import { PALETTE, barColumns, layoutRows } from './layout'
 import type { Row } from './layout'
 import { MAX_FILE_BYTES, idOfFile, parseTask } from './protocol'
 import { DEFAULT_TIMING, phaseOf, pidsToCheck } from './state'
 import type { Timing } from './state'
-import { buildViews, expiredFiles, isAnimated } from './views'
+import { buildViews, expiredFiles, finished, isAnimated } from './views'
 import { TAIL_BYTES, countMatches, expandHome, newestMatch, parseWatchers, readLog, splitGlob, watcherTask } from './watchers'
 import type { Reading, Watcher } from './watchers'
 
 const EMPTY: Snapshot = { tasks: [], alive: {}, rates: {} }
 const snapshotA = atom({ plugin: 'taskline', key: 'snapshot' } as const, EMPTY)
 const prefsA = atom({ plugin: 'taskline', key: 'prefs' } as const, { layout: 'auto', hidden: false } as Prefs)
+const celebrationA = atom({ plugin: 'taskline', key: 'celebration' } as const, null as Celebration | null)
+/** The Raster the finish is drawn in; `$.ui.blit` repaints it by this key. */
+const RASTER_KEY = 'taskline-check'
+/** The finish's rows at most: the large show and a row of air for the sparks. */
+const CELEBRATE_ROWS = needs(2).rows + 1
 
 const LAYOUTS: readonly Layout[] = ['auto', 'single', 'stacked']
 const TICK_MS = 250
@@ -38,6 +45,7 @@ type Config = {
   timing: Timing
   color: boolean
   animation: boolean
+  celebrate: boolean
   cleanup: boolean
   progressDir: string
   watchersFile: string
@@ -57,6 +65,7 @@ export function configOf(options: PluginOptions): Config {
     },
     color: options.color !== false,
     animation: options.animation !== false,
+    celebrate: options.celebrate !== false,
     cleanup: options.cleanup !== false,
     progressDir: str(options.progressDir, '~/.claude/progress'),
     watchersFile: str(options.watchersFile, '~/.claude/taskline/watchers.json'),
@@ -83,6 +92,53 @@ const resolved = new Map<string, string>()
 let lastPidCheck = 0
 let lastCleanup = 0
 let demo: Timer | undefined
+
+// the finish: one at a time, the rest queued
+let showTimer: Timer | undefined
+const queue: Celebration[] = []
+/** the band's instance and the Raster as last drawn there: what a blit must match */
+let mounted: { requestId: string; cols: number; rows: number } | null = null
+let scene: { key: string; scene: Scene | null } | null = null
+
+function sceneFor(c: Celebration, cols: number, rows: number, color: boolean): Scene | null {
+  const key = `${c.id}:${c.startedAt}:${cols}:${rows}:${color}`
+  if (scene?.key !== key) scene = { key, scene: planScene({ cols, rows, seed: seedOf(key), color, accent: PALETTE.accent, bar: c.bar }) }
+  return scene.scene
+}
+
+async function celebrate($: EngineInterface, cfg: Config, c: Celebration): Promise<void> {
+  if (!cfg.celebrate) return
+  const current = await read($, celebrationA)
+  const now = await $.clock.now()
+  if (current && now - current.startedAt < CELEBRATE_MS) {
+    if (queue.length < 3) queue.push(c)
+    return
+  }
+  await update($, celebrationA, () => ({ ...c, startedAt: now }))
+  $.ui.invalidate('ui.render')
+  showTimer?.cancel()
+  showTimer = $.clock.every(Math.round(1000 / CELEBRATE_FPS), () => void step($, cfg))
+}
+
+/** One frame of the finish: repaint the Raster in place; at the end, the next one or nothing. */
+async function step($: EngineInterface, cfg: Config): Promise<void> {
+  const c = await read($, celebrationA)
+  const now = await $.clock.now()
+  if (!c || now - c.startedAt >= CELEBRATE_MS) {
+    showTimer?.cancel()
+    showTimer = undefined
+    await update($, celebrationA, () => null)
+    $.ui.invalidate('ui.render')
+    const nextUp = queue.shift()
+    if (nextUp) await celebrate($, cfg, nextUp)
+    return
+  }
+  const sc = mounted ? sceneFor(c, mounted.cols, mounted.rows, cfg.color && colorEnv) : null
+  if (!mounted || !sc) return
+  await $.ui
+    .blit({ requestId: mounted.requestId, key: RASTER_KEY, cells: encodeCells(frame(sc, now - c.startedAt)) })
+    .catch(() => undefined)
+}
 
 const dirOf = (cfg: Config) => expandHome(cfg.progressDir, home).replace(/\/+$/, '')
 
@@ -233,6 +289,7 @@ async function poll($: EngineInterface, cfg: Config): Promise<void> {
       alive = await checkPids($, pidsToCheck(tasks), prev.alive)
     }
     const next: Snapshot = { tasks, alive, rates: advanceAll(prev.rates, tasks) }
+    for (const t of finished(prev.tasks, tasks)) await celebrate($, cfg, { id: t.id, label: t.label, startedAt: now, bar: barColumns(t) })
 
     if (cfg.cleanup && now - lastCleanup >= CLEANUP_EVERY_MS) {
       lastCleanup = now
@@ -321,6 +378,7 @@ const HELP = [
   '  /taskline hide | show          hide or show the band',
   '  /taskline layout auto|single|stacked',
   '  /taskline demo                 three fake jobs for 35 s',
+  '  /taskline check                play the finish (the bar bursts, CHECK!!)',
 ].join('\n')
 
 export const register: Register = (on, options) => {
@@ -338,7 +396,7 @@ export const register: Register = (on, options) => {
     await $.command.register({
       name: 'taskline',
       description: 'Progress of long-running jobs: list, clear, hide/show, layout, demo',
-      argumentHint: '[clear [all]|rm <id>|hide|show|layout auto|single|stacked|demo|help]',
+      argumentHint: '[clear [all]|rm <id>|hide|show|layout auto|single|stacked|demo|check|help]',
       immediate: true,
     })
     timer?.cancel()
@@ -398,6 +456,10 @@ export const register: Register = (on, options) => {
         await poll($, cfg)
         return { text: n ? `removed ${arg}` : `could not remove ${arg}` }
       }
+      case 'check':
+        if (!cfg.celebrate) return { text: 'the finish is off (celebrate in /config)' }
+        await celebrate($, cfg, { id: 'taskline-check', label: 'taskline', startedAt: now, bar: [2, 22] })
+        return { text: 'CHECK!!' }
       case 'demo':
         await runDemo($, cfg)
         await poll($, cfg)
@@ -411,24 +473,65 @@ export const register: Register = (on, options) => {
     if (e.props.hasSurvey) return next(e)
     const prefs = await read($, prefsA)
     const snap = await read($, snapshotA)
-    if (prefs.hidden || snap.tasks.length === 0) return next(e)
-
     const now = await $.clock.now()
+    const cel = await read($, celebrationA)
+    const showing = cel && cfg.celebrate && !prefs.hidden && now - cel.startedAt < CELEBRATE_MS ? cel : null
+    if (prefs.hidden || (snap.tasks.length === 0 && !showing)) return next(e)
+
     const views = buildViews(snap, now, cfg.timing)
-    if (views.length === 0) return next(e)
-    const rows: Row[] = layoutRows(views, {
-      width: e.props.bodyColumns,
-      layout: prefs.layout,
-      maxTasks: cfg.maxTasks,
-      maxRows: Math.max(1, e.props.maxRows - 1),
-      nowMs: now,
-      color: cfg.color && colorEnv,
-    })
-    if (rows.length === 0) return next(e)
+    if (views.length === 0 && !showing) return next(e)
+    const color = cfg.color && colorEnv
+    const width = e.props.bodyColumns
+    const budget = Math.max(1, e.props.maxRows - 1)
+
+    // the finish takes the rows it can get above the tasks; one row stays for them
+    let raster: { rows: number; scene: Scene } | null = null
+    if (showing && e.surface === 'terminal' && cfg.animation) {
+      const rowsFree = Math.min(CELEBRATE_ROWS, budget - (views.length ? 1 : 0))
+      const sc = rowsFree > 0 ? sceneFor(showing, width, rowsFree, color) : null
+      if (sc) raster = { rows: rowsFree, scene: sc }
+    }
+    mounted = raster ? { requestId: e.requestId, cols: width, rows: raster.rows } : null
+    const used = raster ? raster.rows : showing ? 1 : 0
+    const rows: Row[] = views.length
+      ? layoutRows(views, {
+          width,
+          layout: prefs.layout,
+          maxTasks: cfg.maxTasks,
+          maxRows: Math.max(1, budget - used),
+          nowMs: now,
+          color,
+        })
+      : []
+    if (rows.length === 0 && !showing) return next(e)
 
     const { Box, Text } = $.ui.resolve(e)
+    let top: ReturnType<typeof h> | null = null
+    if (raster && e.surface === 'terminal') {
+      const { Raster } = $.ui.resolve(e)
+      top = (
+        <Raster
+          key={RASTER_KEY}
+          columns={width}
+          rows={raster.rows}
+          cells={encodeCells(frame(raster.scene, now - showing!.startedAt))}
+        />
+      )
+    } else if (showing) {
+      // no room, no animation, or a surface without a Raster: the finish in one line
+      top = (
+        <Box key="taskline-check-line" flexDirection="row">
+          <Text color={color ? PALETTE.ok : undefined} bold wrap="truncate-end">
+            {`✔ CHECK!!`}
+          </Text>
+          <Text dimColor wrap="truncate-end">{`  ${showing.label}`}</Text>
+        </Box>
+      )
+    }
+
     const band = (
       <Box key="taskline" flexDirection="column">
+        {top}
         {rows.map((row, i) => (
           <Box key={`row-${i}`} flexDirection="row">
             {row.map((s, j) => (

@@ -54,8 +54,19 @@ export type Snapshot = {
   rates: Record<string, RateState>
 }
 
+/** The finish playing above the band: a task that just completed. */
+export type Celebration = {
+  /** the task's id, its label */
+  id: string
+  label: string
+  /** epoch ms the show started */
+  startedAt: number
+  /** where its bar was in its row, [from, to) columns */
+  bar: [number, number]
+}
+
 declare module 'claude-code' {
   interface PluginState {
-    taskline: { snapshot: Snapshot; prefs: Prefs }
+    taskline: { snapshot: Snapshot; prefs: Prefs; celebration: Celebration | null }
   }
 }

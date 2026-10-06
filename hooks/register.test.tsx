@@ -79,8 +79,9 @@ function world(on: any, env: Record<string, string> = {}) {
 }
 
 const start = ($: any) => $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
-const mount = ($: any, surface: 'terminal' | 'desktop' = 'terminal', bodyColumns = 140): Promise<any> =>
-  $.ui.mount({ ...BAND, props: { ...BAND.props, bodyColumns }, surface, viewport: { columns: bodyColumns + 5, rows: 40 } })
+let mounts = 0
+const mount = ($: any, surface: 'terminal' | 'desktop' = 'terminal', bodyColumns = 140, maxRows = 10): Promise<any> =>
+  $.ui.mount({ ...BAND, requestId: `band-${++mounts}`, props: { ...BAND.props, bodyColumns, maxRows }, surface, viewport: { columns: bodyColumns + 5, rows: 40 } })
 const shown = async (ui: any) => (await ui.findAll({ type: 'Text' })).map((t: any) => t.text).join('')
 const run = ($: any, args: string) => $.command.run({ command: 'taskline', args } as never) as Promise<{ text: string }>
 /** one poll: the timer polls once a second */
@@ -294,4 +295,133 @@ test('with cleanup off, a finished task still hides after doneVisible and its fi
   expect(await shown(ui)).toBe('engine-band')
   expect(w.removed).toEqual([])
   expect(w.files.has(`${DIR}/dl.json`)).toBe(true)
+})
+
+/** A task that runs, then finishes while the band watches. */
+async function finishOne($: any, w: any) {
+  w.task('bridge', { label: 'Bridge', icon: '⬇', done: 19, total: 20, unit: 'songs' })
+  await start($)
+  await tick(w.clock)
+  w.task('bridge', { label: 'Bridge', icon: '⬇', done: 20, total: 20, unit: 'songs', status: 'done' })
+  await tick(w.clock)
+}
+const blits = (on: any) => {
+  const seen: any[] = []
+  on('ui.blit', (_$: any, e: any) => {
+    seen.push(e)
+    return { value: {} }
+  })
+  return seen
+}
+const rasters = async (ui: any) => ui.findAll({ type: 'Raster' })
+
+test('a bar that fills bursts: a Raster above the band, repainted frame by frame, gone after the show', async ($, on) => {
+  const w = world(on)
+  const seen = blits(on)
+  await finishOne($, w)
+  const ui = await mount($, 'terminal', 140, 20)
+  const [r] = await rasters(ui)
+  expect(r).toBeDefined()
+  expect(r.props.columns).toBe(140)
+  expect(r.props.rows).toBeGreaterThanOrEqual(12) // room for the large show
+  expect(await shown(ui)).toContain('✔ 20/20 songs') // the task row stays beneath
+  const before = seen.length
+  await w.clock.advance(500)
+  expect(seen.length).toBeGreaterThan(before + 10) // ~30 frames a second
+  expect(seen.at(-1).key).toBe(r.props.key)
+  expect(seen.at(-1).requestId).toBe(`band-${mounts}`) // the band it was drawn in
+  expect(new Set(seen.slice(before).map((b: any) => b.cells)).size).toBeGreaterThan(5) // it moves
+  await w.clock.advance(3000)
+  expect(await rasters(await mount($, 'terminal', 140, 20))).toHaveLength(0)
+  const after = seen.length
+  await w.clock.advance(1000)
+  expect(seen.length).toBe(after) // and stops repainting
+})
+
+test('the desktop app gets the finish as one line', async ($, on) => {
+  const w = world(on)
+  const seen = blits(on)
+  await finishOne($, w)
+  const ui = await mount($, 'desktop', 140, 20)
+  expect(await rasters(ui)).toHaveLength(0)
+  expect(await shown(ui)).toContain('✔ CHECK!!')
+  await w.clock.advance(500)
+  expect(seen).toHaveLength(0) // nothing to repaint there
+})
+
+test('no room for the show: one line instead, the task row kept', async ($, on) => {
+  const w = world(on)
+  blits(on)
+  await finishOne($, w)
+  const ui = await mount($, 'terminal', 40, 20)
+  expect(await rasters(ui)).toHaveLength(0)
+  const t = await shown(ui)
+  expect(t).toContain('✔ CHECK!!')
+  expect(t).toContain('Bridge')
+})
+
+test('a task already done when taskline starts does not celebrate', async ($, on) => {
+  const w = world(on)
+  const seen = blits(on)
+  w.task('bridge', { label: 'Bridge', done: 20, total: 20, unit: 'songs', status: 'done' })
+  await start($)
+  await tick(w.clock)
+  await tick(w.clock)
+  const ui = await mount($, 'terminal', 140, 20)
+  expect(await rasters(ui)).toHaveLength(0)
+  expect(await shown(ui)).not.toContain('CHECK!!')
+  expect(seen).toHaveLength(0)
+})
+
+test('celebrate off: a finished task is just green', { options: { celebrate: false } }, async ($, on) => {
+  const w = world(on)
+  const seen = blits(on)
+  await finishOne($, w)
+  const ui = await mount($, 'terminal', 140, 20)
+  expect(await rasters(ui)).toHaveLength(0)
+  expect(await shown(ui)).not.toContain('CHECK!!')
+  expect(seen).toHaveLength(0)
+  expect((await run($, 'check')).text).toContain('off')
+})
+
+test('/taskline check plays the finish with no task at all', async ($, on) => {
+  const w = world(on)
+  blits(on)
+  await start($)
+  await tick(w.clock)
+  expect((await run($, 'check')).text).toBe('CHECK!!')
+  const ui = await mount($, 'terminal', 140, 20)
+  expect(await rasters(ui)).toHaveLength(1)
+  await w.clock.advance(3500)
+  expect(await shown(await mount($, 'terminal', 140, 20))).toBe('engine-band')
+})
+
+test('a tight band: the show shrinks so the task row still fits', async ($, on) => {
+  const w = world(on)
+  blits(on)
+  await finishOne($, w)
+  const maxRows = 14 // the band may use 13 rows: the large show needs 13 with its air, so it gives one up
+  const ui = await mount($, 'terminal', 140, maxRows)
+  const [r] = await rasters(ui)
+  expect(r).toBeDefined()
+  const taskRows = (await ui.findAll({ type: 'Box' })).filter((b: any) => String(b.key ?? '').startsWith('row-'))
+  expect(taskRows.length).toBe(1)
+  expect(r.props.rows + taskRows.length).toBeLessThanOrEqual(maxRows - 1)
+})
+
+test('two finishes at once: the second plays after the first', async ($, on) => {
+  const w = world(on)
+  blits(on)
+  w.task('a', { label: 'A', done: 1, total: 2 })
+  w.task('b', { label: 'B', done: 1, total: 2 })
+  await start($)
+  await tick(w.clock)
+  w.task('a', { label: 'A', done: 2, total: 2, status: 'done' })
+  w.task('b', { label: 'B', done: 2, total: 2, status: 'done' })
+  await tick(w.clock)
+  expect(await rasters(await mount($, 'terminal', 140, 20))).toHaveLength(1)
+  await w.clock.advance(3000) // the first is over, the second runs
+  expect(await rasters(await mount($, 'terminal', 140, 20))).toHaveLength(1)
+  await w.clock.advance(3000) // and then nothing
+  expect(await rasters(await mount($, 'terminal', 140, 20))).toHaveLength(0)
 })
