@@ -66,6 +66,8 @@ body{background:transparent;font-family:"SF Mono",Menlo,"JetBrains Mono",monospa
 .cap:first-child{padding-top:0}
 .grid{display:grid;grid-template-columns:auto 1fr;column-gap:24px;align-items:center}
 .grid .cap{padding:0}
+.sheet{display:grid;grid-template-columns:1fr 1fr;column-gap:4ch;row-gap:6px;font-size:9.3px}
+.sheet .cap{font-size:12px}
 .cells{display:flex}.cells i{display:block;width:1ch;height:1.55em;flex:none}
 `
 
@@ -103,12 +105,21 @@ function raster(s: Scene, t: number): string {
 const finishBody = (t: number) => `<div class="row"><span class="acc">⏺</span> Downloading and importing the 20 songs</div>
 ${raster(CEL_SCENE, t)}${rows([FINISHED], CEL_COLS)}
 <div class="box">&gt; <span class="dim"> </span></div>`
+/** The whole run, explosion to CHECK!!: the contact sheet under the animation. */
 const CEL_MOMENTS: [number, string][] = [
-  [140, 'the bar bursts'],
-  [330, 'sparks and a shock ring'],
-  [720, 'the check draws itself'],
+  [-1, 'the bar fills'],
+  [60, 'it flashes white-hot'],
+  [150, 'and bursts'],
+  [260, 'sparks and a shock ring'],
+  [420, 'the sparks cool to green'],
+  [560, 'the check starts to draw'],
+  [700, 'a pen of light, CHECK!! drops in'],
+  [860, 'letter by letter'],
   [1480, 'CHECK!! — a light sweeps across'],
+  [2400, 'and it dissolves'],
 ]
+const RUNNING = { ...FINISHED, task: { ...FINISHED.task, done: 19, status: 'running' as const }, phase: 'running' as const, speed: 0.1, bytesSpeed: 9.6e6, eta: 8 }
+const moment = (t: number) => (t < 0 ? `${'<div class="row cells"></div>'.repeat(CEL_SCENE.rows)}${rows([RUNNING], CEL_COLS)}` : `${raster(CEL_SCENE, t)}${rows([FINISHED], CEL_COLS)}`)
 
 const PAGES: Record<string, string> = {
   hero: frame(
@@ -123,9 +134,9 @@ ${rows([TILES, BRIDGE, INDEX], 132)}
   ),
   states: frame('taskline — every state', STATES.map(([cap, v]) => `<div class="grid"><div class="cap" style="width:24ch">${cap}</div>${rows([v], 92, 'stacked')}</div>`).join(''), 120),
   celebrate: frame(
-    'taskline — when a bar fills',
-    CEL_MOMENTS.map(([t, cap]) => `<div class="cap">${t} ms · ${cap}</div>${raster(CEL_SCENE, t)}${rows([FINISHED], CEL_COLS)}`).join(''),
-    CEL_COLS,
+    'taskline — when a bar fills, from the burst to CHECK!!',
+    `<div class="sheet">${CEL_MOMENTS.map(([t, cap], i) => `<div><div class="cap">${i + 1} · ${t < 0 ? 'before' : `${t} ms`} · ${cap}</div>${moment(t)}</div>`).join('')}</div>`,
+    CEL_COLS * 2 * 0.62 + 4,
   ),
   widths: frame(
     'taskline — the same three jobs at four widths',

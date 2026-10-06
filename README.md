@@ -56,7 +56,9 @@
 
 <img src="docs/celebrate.gif" alt="the finish: the bar bursts into sparks, a check mark draws itself, CHECK!! drops in and dissolves" width="100%">
 
-<img src="docs/celebrate.png" alt="four moments of the finish: the burst, sparks and shock ring, the check drawing itself, CHECK!! with a light sweep" width="100%">
+The whole run frame by frame, from the full bar to CHECK!!:
+
+<img src="docs/celebrate.png" alt="ten moments of the finish: the bar fills, flashes white-hot, bursts, sparks and a shock ring, the sparks cool to green, the check draws itself with a pen of light, CHECK!! drops in letter by letter, a light sweeps across, and it dissolves" width="100%">
 
 **Width-aware** — the same three jobs at 140, 100, 72 and 44 columns. One line while everything fits richly; otherwise one row per job, each shrinking its bar first, then its extras, then its label. Nothing ever wraps:
 
